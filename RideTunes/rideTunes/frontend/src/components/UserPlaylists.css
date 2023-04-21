@@ -1,0 +1,47 @@
+.user-playlists {
+    padding: 16px;
+  }
+
+  .playlists-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 16px;
+  }
+  
+  .playlist-item {
+    display: flex;
+    flex-direction: column;
+    background-color: #f0f0f0;
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  
+  .playlist-image {
+    width: 100%;
+    height: auto;
+  }
+  
+  .playlist-info {
+    padding: 8px;
+  }
+  
+  .playlist-name {
+    margin: 0;
+    font-size: 16px;
+    font-weight: bold;
+  }
+  
+  .playlist-description {
+    margin: 4px 0 0;
+    font-size: 14px;
+    color: #666;
+  }
+
+  .user-playlists-container h2 {
+    text-align: center;
+  }
+
+  
+  
+  
+  
