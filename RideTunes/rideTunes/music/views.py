@@ -220,6 +220,43 @@ def user_playlists(request):
             return JsonResponse({'error': f'Failed to fetch YouTube user playlists: {str(e)}'}, status=500)
     else:
         return JsonResponse({'error': f'Provider {provider} not supported'}, status=400)
+    
+def fetch_playlist_items(request):
+    provider = request.GET.get('provider')
+    access_token = request.GET.get('access_token')
+    playlist_id = request.GET.get('playlist_id')
+
+    if provider == 'spotify':
+        headers = {
+            'Authorization': f'Bearer {access_token}',
+        }
+        response = requests.get(f'https://api.spotify.com/v1/playlists/{playlist_id}/tracks', headers=headers)
+
+        if response.status_code == 200:
+            data = response.json()
+            playlist_items = data.get('items')
+            return JsonResponse({'playlist_items': playlist_items})
+        else:
+            return JsonResponse({'error': 'Failed to fetch Spotify playlist items'}, status=500)
+    elif provider == 'google-oauth2':
+        try:
+            credentials = Credentials(token=access_token)
+            youtube = build('youtube', 'v3', credentials=credentials)
+
+            response = youtube.playlistItems().list(
+                part='snippet',
+                playlistId=playlist_id,
+                maxResults=50
+            ).execute()
+
+            playlist_items = response.get('items')
+            return JsonResponse({'playlist_items': playlist_items})
+        except Exception as e:
+            traceback.print_exc()
+            return JsonResponse({'error': f'Failed to fetch YouTube playlist items: {str(e)}'}, status=500)
+    else:
+        return JsonResponse({'error': f'Provider {provider} not supported'}, status=400)
+
 
 def revoke_access_token(provider, access_token):
     response = None  # Initialize the variable before the if conditions
