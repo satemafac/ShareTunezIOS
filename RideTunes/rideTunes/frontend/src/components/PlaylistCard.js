@@ -9,7 +9,7 @@ const PlaylistCard = ({ provider, accessToken, id, name, imageUrl, description }
   const fetchPlaylistItems = async () => {
     try {
       const response = await fetch(
-        `${process.env.REACT_APP_BACKEND_URL}/music/api/playlist_items/?provider=${provider}&access_token=${accessToken}&playlist_id=${id}`,
+        `${process.env.REACT_APP_BACKEND_URL}/music/api/fetch_playlist_items/?provider=${provider}&access_token=${accessToken}&playlist_id=${id}`,
         {
           credentials: 'include',
         }

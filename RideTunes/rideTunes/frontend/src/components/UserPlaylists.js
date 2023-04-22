@@ -6,6 +6,8 @@ import { ClipLoader } from 'react-spinners';
 const UserPlaylists = ({ provider, username }) => {
   const [playlists, setPlaylists] = useState([]);
   const [loading, setLoading] = useState(true);
+  const accessToken = localStorage.getItem('access_token');
+
 
   const fetchUserPlaylists = async () => {
     try {
@@ -71,20 +73,22 @@ const UserPlaylists = ({ provider, username }) => {
           <div className="playlists-grid">
             {playlists.map((playlist) => (
               <PlaylistCard
-                key={playlist.id}
-                id={playlist.id}
-                name={
-                  provider === 'spotify'
-                    ? playlist.name
-                    : playlist.snippet.title
-                }
-                imageUrl={
-                  provider === 'spotify'
-                    ? playlist.images[0]?.url
-                    : playlist.snippet.thumbnails.high.url
-                }
-                description={playlist.description}
-              />
+              key={playlist.id}
+              id={playlist.id}
+              provider={provider}
+              accessToken={accessToken}
+              name={
+                provider === 'spotify'
+                  ? playlist.name
+                  : playlist.snippet.title
+              }
+              imageUrl={
+                provider === 'spotify'
+                  ? playlist.images[0]?.url
+                  : playlist.snippet.thumbnails.high.url
+              }
+              description={playlist.description}
+            />
             ))}
           </div>
         )}
