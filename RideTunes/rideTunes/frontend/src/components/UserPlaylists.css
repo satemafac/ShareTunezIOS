@@ -41,6 +41,15 @@
     text-align: center;
   }
 
+  .spinner {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100px;
+    margin-top: 20px;
+  }
+  
+
   
   
   
