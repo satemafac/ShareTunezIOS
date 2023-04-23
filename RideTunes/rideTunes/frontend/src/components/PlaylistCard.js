@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import './PlaylistCard.css';
 import Modal from './Modal';
+import './PlaylistItems.css';
+
 
 const PlaylistCard = ({ provider, accessToken, id, name, imageUrl, description }) => {
   const [showModal, setShowModal] = useState(false);
@@ -48,15 +50,27 @@ const PlaylistCard = ({ provider, accessToken, id, name, imageUrl, description }
       {showModal && (
         <Modal onClose={() => setShowModal(false)}>
           <h2>Playlist Items</h2>
-          <ul>
-            {playlistItems.map((item) => (
-              <li key={item.id}>
-                {provider === 'spotify'
-                  ? item.track.name
-                  : item.snippet.title}
-              </li>
-            ))}
-          </ul>
+          <div className="playlist-items">
+            {playlistItems.map((item) => {
+              const track = provider === 'spotify' ? item.track : item.snippet;
+              const title = provider === 'spotify' ? track.name : track.title;
+              const artist = provider === 'spotify' ? track.artists[0].name : track.videoOwnerChannelTitle.replace(' - Topic', '');
+              const thumbnailUrl =
+                provider === 'spotify'
+                  ? track.album.images[0]?.url
+                  : track.thumbnails.default.url;
+
+              return (
+                <div key={item.id} className="playlist-item">
+                  <img src={thumbnailUrl} alt={title} className="playlist-item-img" />
+                  <div className="playlist-item-details">
+                    <h3 className="playlist-item-title">{title}</h3>
+                    <p className="playlist-item-artist">{artist}</p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </Modal>
       )}
     </div>

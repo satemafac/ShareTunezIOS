@@ -23,7 +23,7 @@ from django.contrib.auth.decorators import login_required
 from social_django.models import UserSocialAuth
 import traceback
 from ytmusicapi import YTMusic
-
+import re
 
 
 SPOTIFY_KEY = os.environ.get("SPOTIFY_KEY")
@@ -221,6 +221,7 @@ def user_playlists(request):
     else:
         return JsonResponse({'error': f'Provider {provider} not supported'}, status=400)
     
+    
 def fetch_playlist_items(request):
     provider = request.GET.get('provider')
     access_token = request.GET.get('access_token')
@@ -250,6 +251,7 @@ def fetch_playlist_items(request):
             ).execute()
 
             playlist_items = response.get('items')
+            print(playlist_items)
             return JsonResponse({'playlist_items': playlist_items})
         except Exception as e:
             traceback.print_exc()
