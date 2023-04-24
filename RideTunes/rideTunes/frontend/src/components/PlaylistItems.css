@@ -4,11 +4,11 @@
   }
   
   .playlist-item {
-    display: flex;
+    display: grid; /* Changed from display: flex; */
+    grid-template-columns: auto 1fr; /* Added grid-template-columns: auto 1fr; */
     align-items: center;
     padding: 5px;
     border-bottom: 1px solid rgba(0, 0, 0, 0.1);
-    position: relative; /* Added position: relative; */
   }
   
   .playlist-item:nth-child(even) {
@@ -19,15 +19,12 @@
     width: 40px;
     height: 40px;
     margin-right: 10px;
-    position: absolute; /* Added position: absolute; */
-    left: 5px; /* Added left: 5px; */
   }
   
   .playlist-item-details {
     display: flex;
-    align-items: center;
+    flex-direction: column; /* Changed from align-items: center; */
     flex-grow: 1;
-    margin-left: 60px; /* Added margin-left: 60px; */
   }
   
   .playlist-item-title {
@@ -41,4 +38,3 @@
     color: #666;
     margin-left: 10px;
   }
-  
