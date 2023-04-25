@@ -49,7 +49,8 @@ const PlaylistCard = ({ provider, accessToken, id, name, imageUrl, description }
       </div>
       {showModal && (
         <Modal onClose={() => setShowModal(false)}>
-          <h2>Playlist Items</h2>
+          <h2>{name} Playlist</h2>
+          <div className="playlist-items-container">
           <div className="playlist-items">
             {playlistItems.map((item) => {
               const track = provider === 'spotify' ? item.track : item.snippet;
@@ -70,6 +71,7 @@ const PlaylistCard = ({ provider, accessToken, id, name, imageUrl, description }
                 </div>
               );
             })}
+          </div>
           </div>
         </Modal>
       )}
