@@ -1,6 +1,6 @@
 import React from 'react';
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
-import Music from './components/Music';
+import Music from './components/Music'; 
 
 const App = () => {
   return (

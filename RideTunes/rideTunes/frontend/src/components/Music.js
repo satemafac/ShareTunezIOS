@@ -5,17 +5,30 @@ import './Music.css';
 import ProtectedComponent from './ProtectedComponent';
 import PlaylistManager from './PlaylistManager';
 import UserPlaylists from './UserPlaylists';
+import MusicPlayer from './MusicPlayer'; // Import MusicPlayer component
+import { MDBIcon, MDBBtn } from 'mdbreact';
+import '@fortawesome/fontawesome-free/css/all.min.css';
+import 'bootstrap-css-only/css/bootstrap.min.css';
+import 'mdbreact/dist/css/mdb.css';
+
 
 
 
 const Music = () => {
   const [isDropdownVisible, setDropdownVisible] = useState(false);
   const [userProfile, setUserProfile] = useState({ display_name: '', profile_image: '' });
+  const [activeTab, setActiveTab] = useState('playlists');
   const location = useLocation();
   const dropdownRef = useRef(null);
   const navigate = useNavigate();
   const provider = localStorage.getItem('provider');
   const [username, setUsername] = useState('');
+  const [playlists, setPlaylists] = useState(null);
+
+
+  const handleTabChange = (tab) => {
+    setActiveTab(tab);
+  };
 
 
   
@@ -174,17 +187,31 @@ const Music = () => {
           </div>
         </header>
         <main className="content">
-        <div className="playlist-creation">
-          <PlaylistManager />
-        </div>
-        <div className="user-playlists">
-          <UserPlaylists provider={provider} username={username} />
-        </div>
-      </main>
+          <div className="playlist-creation">
+            <PlaylistManager />
+          </div>
+          <div className="tab-buttons">
+            <button onClick={() => handleTabChange('playlists')}>Playlists</button>
+            <button onClick={() => handleTabChange('player')}>Player</button>
+          </div>
+          <div
+            className={`user-playlists ${
+              activeTab === 'playlists' ? 'visible' : 'hidden'
+            }`}
+          >
+            <UserPlaylists provider={provider} username={username} />
+          </div>
+          <div
+            className={`music-player ${
+              activeTab === 'player' ? 'visible' : 'hidden'
+            }`}
+          >
+            <MusicPlayer />
+          </div>
+        </main>
       </div>
-    </ProtectedComponent> 
+    </ProtectedComponent>
   );
-  
 };
 
 export default Music;

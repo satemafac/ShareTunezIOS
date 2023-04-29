@@ -58,7 +58,8 @@ const UserPlaylists = ({ provider, username }) => {
       localStorage.removeItem(`user_playlists_cache_${provider}`);
       localStorage.removeItem(`user_playlists_cache_expiry_${provider}`);
     };
-  }, []);
+  }, [provider, username]);
+  
   
 
   return (
