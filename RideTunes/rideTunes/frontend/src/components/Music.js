@@ -5,8 +5,11 @@ import './Music.css';
 import ProtectedComponent from './ProtectedComponent';
 import PlaylistManager from './PlaylistManager';
 import UserPlaylists from './UserPlaylists';
-
-
+import MusicPlayer from './MusicPlayer';
+import Tabs from '@mui/material/Tabs';
+import Tab from '@mui/material/Tab';
+import PlayCircleOutlineIcon from '@mui/icons-material/PlayCircleOutline';
+import LibraryMusicIcon from '@mui/icons-material/LibraryMusic';
 
 const Music = () => {
   const [isDropdownVisible, setDropdownVisible] = useState(false);
@@ -16,6 +19,11 @@ const Music = () => {
   const navigate = useNavigate();
   const provider = localStorage.getItem('provider');
   const [username, setUsername] = useState('');
+  const [activeTab, setActiveTab] = useState(0); // Change this line
+
+  const handleChange = (event, newValue) => {
+    setActiveTab(newValue);
+  };
 
 
   
@@ -174,17 +182,42 @@ const Music = () => {
           </div>
         </header>
         <main className="content">
-        <div className="playlist-creation">
-          <PlaylistManager />
-        </div>
-        <div className="user-playlists">
-          <UserPlaylists provider={provider} username={username} />
-        </div>
-      </main>
+          <div className="playlist-creation">
+            <PlaylistManager />
+          </div>
+          <Tabs
+            value={activeTab}
+            onChange={handleChange}
+            variant="fullWidth"
+            indicatorColor="secondary"
+            textColor="secondary"
+            aria-label="music app tabs"
+          >
+            <Tab
+              icon={<LibraryMusicIcon />}
+              label="Playlists"
+              value={0} // Change this line
+            />
+            <Tab
+              icon={<PlayCircleOutlineIcon />}
+              label="Player"
+              value={1} // Change this line
+            />
+          </Tabs>
+          {activeTab === 0 && ( // Change this line
+            <div className="user-playlists">
+              <UserPlaylists provider={provider} username={username} />
+            </div>
+          )}
+          {activeTab === 1 && ( // Change this line
+            <div className="music-player">
+              <MusicPlayer />
+            </div>
+          )}
+        </main>
       </div>
-    </ProtectedComponent> 
-  );
-  
+    </ProtectedComponent>
+  );  
 };
 
 export default Music;

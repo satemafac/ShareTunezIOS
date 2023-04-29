@@ -53,13 +53,8 @@ const UserPlaylists = ({ provider, username }) => {
   
   useEffect(() => {
     fetchUserPlaylists();
-    return () => {
-      // Clear cache when the component is unmounted (e.g., when the user logs out)
-      localStorage.removeItem(`user_playlists_cache_${provider}`);
-      localStorage.removeItem(`user_playlists_cache_expiry_${provider}`);
-    };
   }, []);
-  
+
 
   return (
     <div className="user-playlists">

@@ -1,56 +1,50 @@
 .user-playlists {
-    padding: 16px;
-  }
+  padding: 16px;
+}
 
-  .playlists-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 16px;
-  }
-  
-  .playlist-item {
-    display: flex;
-    flex-direction: column;
-    background-color: #f0f0f0;
-    border-radius: 4px;
-    overflow: hidden;
-  }
-  
-  .playlist-image {
-    width: 100%;
-    height: auto;
-  }
-  
-  .playlist-info {
-    padding: 8px;
-  }
-  
-  .playlist-name {
-    margin: 0;
-    font-size: 16px;
-    font-weight: bold;
-  }
-  
-  .playlist-description {
-    margin: 4px 0 0;
-    font-size: 14px;
-    color: #666;
-  }
+.playlists-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 16px;
+}
 
-  .user-playlists-container h2 {
-    text-align: center;
-  }
+.playlist-item {
+  display: flex;
+  flex-direction: column;
+  background-color: #f0f0f0;
+  border-radius: 4px;
+  overflow: hidden;
+}
 
-  .spinner {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100px;
-    margin-top: 20px;
-  }
-  
+.playlist-image {
+  width: 100%;
+  height: auto;
+}
 
-  
-  
-  
-  
+.playlist-info {
+  padding: 8px;
+}
+
+.playlist-name {
+  margin: 0;
+  font-size: 16px;
+  font-weight: bold;
+}
+
+.playlist-description {
+  margin: 4px 0 0;
+  font-size: 14px;
+  color: #666;
+}
+
+.user-playlists-container h2 {
+  text-align: center;
+}
+
+.spinner {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100px;
+  margin-top: 20px;
+}

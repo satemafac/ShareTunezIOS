@@ -1,0 +1,21 @@
+.music-player {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .cover-art {
+    width: 100px;
+    height: 100px;
+    margin-right: 20px;
+  }
+  
+  .player-controls {
+    display: flex;
+    align-items: center;
+  }
+  
+  /* .player-button {
+   
+  } */
+  
