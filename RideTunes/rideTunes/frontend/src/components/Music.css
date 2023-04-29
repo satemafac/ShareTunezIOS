@@ -106,12 +106,3 @@ body {
     padding: 20px;
   }
   
-  /* ...existing rules */
-
-.visible {
-  display: block;
-}
-
-.hidden {
-  display: none;
-}
