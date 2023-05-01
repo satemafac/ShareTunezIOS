@@ -185,6 +185,11 @@ SOCIAL_AUTH_GOOGLE_OAUTH2_SCOPE = [
     'https://www.googleapis.com/auth/youtube.force-ssl',
 ]
 
+SOCIAL_AUTH_GOOGLE_OAUTH2_AUTH_EXTRA_ARGUMENTS = {
+    'access_type': 'offline',      # Requests a refresh token
+    'approval_prompt': 'force',    # Forces re-approval to get a new refresh token each time
+}
+
 
 
 # settings.py

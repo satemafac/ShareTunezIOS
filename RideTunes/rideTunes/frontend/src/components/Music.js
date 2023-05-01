@@ -183,7 +183,7 @@ const Music = () => {
         </header>
         <main className="content">
           <div className="playlist-creation">
-            <PlaylistManager />
+          <PlaylistManager provider={provider} access_token={localStorage.getItem('access_token')} />
           </div>
           <Tabs
             value={activeTab}

@@ -13,6 +13,7 @@ urlpatterns = [
     path('api/check_auth/', views.check_auth, name='check_auth'),
     path('api/user_playlists/', views.user_playlists, name='user_playlists'),
     path('accounts/logout/', auth_views.LogoutView.as_view(), name='logout'),
+    path('api/create_shared_playlist/', views.create_shared_playlist, name='create_shared_playlist'),
     path('api/fetch_playlist_items/', views.fetch_playlist_items, name='fetch_playlist_items'),
     # ...
 ]

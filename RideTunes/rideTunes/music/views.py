@@ -7,6 +7,7 @@ from django.http import HttpResponseRedirect
 from django.http import JsonResponse
 from django.middleware.csrf import get_token
 from rest_framework_simplejwt.tokens import RefreshToken
+from .models import SharedPlaylist
 import os
 import requests
 from urllib.parse import urlencode
@@ -122,6 +123,11 @@ def after_auth(request):
         backend = request.user.social_auth.filter(provider=provider).latest('pk')
     
     access_token = backend.extra_data.get('access_token')
+    refresh_token = backend.extra_data.get('refresh_token')
+
+    user_profile = request.user.userprofile
+    user_profile.refresh_token = refresh_token
+    user_profile.save()
 
     # Set cookies and redirect without query parameters
     response = HttpResponseRedirect(frontend_url)
@@ -275,6 +281,86 @@ def revoke_access_token(provider, access_token):
         print(f"Provider {provider} not supported for token revocation")  # Print statement to help debug
 
     return response
+
+
+def create_shared_playlist(request):
+    if request.method == 'POST':
+        data = json.loads(request.body)
+        print("Received data:", data)  # Add this line to print the received data
+        provider = data.get('provider')
+        access_token = data.get('access_token')
+        playlist_name = data.get('playlist_name')
+
+        if provider == 'spotify':
+            headers = {
+                'Authorization': f'Bearer {access_token}',
+            }
+            payload = {
+                'name': playlist_name,
+                'description': 'Shared Playlist created by our app',
+                'public': False,
+            }
+            response = requests.post('https://api.spotify.com/v1/me/playlists', headers=headers, json=payload)
+            print("Spotify API response status code:", response.status_code)  # Add this line to print the status code
+
+
+            # For the Spotify provider
+            if response.status_code == 201:
+                new_playlist = response.json()
+
+                # Create and save a new SharedPlaylist instance in the database
+                shared_playlist = SharedPlaylist(
+                    name=playlist_name,
+                    master_playlist_endpoint=new_playlist['href'],
+                    master_playlist_owner=request.user,
+                )
+                shared_playlist.save()
+                shared_playlist.users.add(request.user)
+
+                return JsonResponse({'new_playlist': new_playlist})
+            else:
+                return JsonResponse({'error': 'Failed to create Spotify shared playlist'}, status=500)
+
+        # For the Google-oauth2 provider
+        elif provider == 'google-oauth2':
+            try:
+                credentials = Credentials(token=access_token)
+                youtube = build('youtube', 'v3', credentials=credentials)
+
+                body = {
+                    'snippet': {
+                        'title': playlist_name,
+                        'description': 'Shared Playlist created by our app',
+                    },
+                    'status': {
+                        'privacyStatus': 'private',
+                    },
+                }
+                response = youtube.playlists().insert(
+                    part='snippet,status',
+                    body=body
+                ).execute()
+
+                new_playlist = response
+
+                # Create and save a new SharedPlaylist instance in the database
+                shared_playlist = SharedPlaylist(
+                    name=playlist_name,
+                    master_playlist_endpoint=f'https://www.googleapis.com/youtube/v3/playlists/{new_playlist["id"]}',
+                    master_playlist_owner=request.user,
+                )
+                shared_playlist.save()
+                shared_playlist.users.add(request.user)
+
+                return JsonResponse({'new_playlist': new_playlist})
+            except Exception as e:
+                traceback.print_exc()
+                return JsonResponse({'error': f'Failed to create YouTube shared playlist: {str(e)}'}, status=500)
+        else:
+            return JsonResponse({'error': f'Provider {provider} not supported'}, status=400)
+    else:
+        return JsonResponse({'error': 'Invalid request method'}, status=405)
+
 
 def logout_view(request):
     if request.method == 'POST':
