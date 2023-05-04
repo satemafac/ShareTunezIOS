@@ -178,18 +178,6 @@ STATIC_URL = '/static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-SOCIAL_AUTH_GOOGLE_OAUTH2_SCOPE = [
-    'openid',
-    'https://www.googleapis.com/auth/userinfo.email',
-    'https://www.googleapis.com/auth/userinfo.profile',
-    'https://www.googleapis.com/auth/youtube.force-ssl',
-]
-
-SOCIAL_AUTH_GOOGLE_OAUTH2_AUTH_EXTRA_ARGUMENTS = {
-    'access_type': 'offline',      # Requests a refresh token
-    'approval_prompt': 'force',    # Forces re-approval to get a new refresh token each time
-}
-
 
 
 # settings.py
@@ -244,6 +232,7 @@ REST_FRAMEWORK = {
 
 SOCIAL_AUTH_SPOTIFY_KEY = os.environ.get('SPOTIFY_KEY')
 SOCIAL_AUTH_SPOTIFY_SECRET = os.environ.get('SPOTIFY_SECRET')
+SOCIAL_AUTH_SPOTIFY_SCOPE = ['playlist-modify-public', 'playlist-modify-private','playlist-read-private'] # Add this line
 SOCIAL_AUTH_APPLE_KEY = 'your-apple-client-id'
 SOCIAL_AUTH_APPLE_SECRET = 'your-apple-client-secret'
 SOCIAL_AUTH_APPLE_SCOPE = ['name', 'email']
@@ -253,3 +242,15 @@ SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET = os.environ.get('GOOGLE_SECRET')
 SOCIAL_AUTH_LOGIN_REDIRECT_URL = '/music/after-auth/'
 
 ALLOWED_HOSTS = ['localhost', '127.0.0.1', '192.168.86.28']
+
+SOCIAL_AUTH_GOOGLE_OAUTH2_SCOPE = [
+    'openid',
+    'https://www.googleapis.com/auth/userinfo.email',
+    'https://www.googleapis.com/auth/userinfo.profile',
+    'https://www.googleapis.com/auth/youtube.force-ssl',
+]
+
+SOCIAL_AUTH_GOOGLE_OAUTH2_AUTH_EXTRA_ARGUMENTS = {
+    'access_type': 'offline',      # Requests a refresh token
+    'approval_prompt': 'force',    # Forces re-approval to get a new refresh token each time
+}

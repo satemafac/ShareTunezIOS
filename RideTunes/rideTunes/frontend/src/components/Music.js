@@ -20,6 +20,8 @@ const Music = () => {
   const provider = localStorage.getItem('provider');
   const [username, setUsername] = useState('');
   const [activeTab, setActiveTab] = useState(0); // Change this line
+  const [playlistUpdated, setPlaylistUpdated] = useState(false);
+
 
   const handleChange = (event, newValue) => {
     setActiveTab(newValue);
@@ -183,7 +185,11 @@ const Music = () => {
         </header>
         <main className="content">
           <div className="playlist-creation">
-          <PlaylistManager provider={provider} access_token={localStorage.getItem('access_token')} />
+          <PlaylistManager
+  provider={provider}
+  access_token={localStorage.getItem('access_token')}
+  onPlaylistCreated={() => setPlaylistUpdated(!playlistUpdated)}
+/>
           </div>
           <Tabs
             value={activeTab}
@@ -204,16 +210,22 @@ const Music = () => {
               value={1} // Change this line
             />
           </Tabs>
-          {activeTab === 0 && ( // Change this line
-            <div className="user-playlists">
-              <UserPlaylists provider={provider} username={username} />
-            </div>
-          )}
-          {activeTab === 1 && ( // Change this line
-            <div className="music-player">
-              <MusicPlayer />
-            </div>
-          )}
+          <div
+        className="user-playlists"
+        style={activeTab !== 0 ? { display: "none" } : {}}
+      >
+        <UserPlaylists
+          provider={provider}
+          username={username}
+          playlistUpdated={playlistUpdated}
+        />
+      </div>
+      <div
+        className="music-player"
+        style={activeTab !== 1 ? { display: "none" } : {}}
+      >
+        <MusicPlayer />
+      </div>
         </main>
       </div>
     </ProtectedComponent>

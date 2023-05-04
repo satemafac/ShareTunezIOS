@@ -3,13 +3,13 @@ import './UserPlaylists.css';
 import PlaylistCard from './PlaylistCard';
 import { ClipLoader } from 'react-spinners';
 
-const UserPlaylists = ({ provider, username }) => {
+const UserPlaylists = ({ provider, username, playlistUpdated }) => {
   const [playlists, setPlaylists] = useState([]);
   const [loading, setLoading] = useState(true);
   const accessToken = localStorage.getItem('access_token');
 
 
-  const fetchUserPlaylists = async () => {
+  const fetchUserPlaylists = async (forceUpdate = false) => {
     try {
       const accessToken = localStorage.getItem('access_token');
       const provider = localStorage.getItem('provider');
@@ -18,7 +18,7 @@ const UserPlaylists = ({ provider, username }) => {
       const now = Date.now();
       const cacheExpiry = localStorage.getItem(cacheExpiryKey);
   
-      if (cacheExpiry && now < parseInt(cacheExpiry, 10)) {
+      if (!forceUpdate && cacheExpiry && now < parseInt(cacheExpiry, 10)) {
         const cachedData = localStorage.getItem(cacheKey);
         if (cachedData) {
           setPlaylists(JSON.parse(cachedData));
@@ -51,10 +51,19 @@ const UserPlaylists = ({ provider, username }) => {
     }
   };
   
+  // This useEffect will be called only when the component is mounted for the first time
   useEffect(() => {
-    fetchUserPlaylists();
-  }, []);
+    fetchUserPlaylists(true);
+  }, []); // Removed playlistUpdated dependency
 
+  // Add a new useEffect to listen for playlistUpdated changes and call fetchUserPlaylists accordingly
+  useEffect(() => {
+    if (playlistUpdated) {
+      fetchUserPlaylists(true);
+    }
+  }, [playlistUpdated]);
+
+  
 
   return (
     <div className="user-playlists">

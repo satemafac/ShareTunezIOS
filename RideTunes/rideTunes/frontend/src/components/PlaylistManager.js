@@ -3,24 +3,28 @@ import Modal from 'react-modal';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faPlusCircle } from '@fortawesome/free-solid-svg-icons';
 import './PlaylistManager.css';
+import UserPlaylists from './UserPlaylists';
 
 
-const PlaylistManager = ({ provider, access_token }) => {
+
+const PlaylistManager = ({ provider, access_token,onPlaylistCreated }) => {
   const [playlists, setPlaylists] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [playlistName, setPlaylistName] = useState('');
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (playlistName) {
-      const newPlaylist = await createPlaylist(playlistName);
-      if (newPlaylist) {
-        setPlaylists([...playlists, newPlaylist]);
-        setIsModalOpen(false);
-        setPlaylistName('');
-      }
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  if (playlistName) {
+    const newPlaylist = await createPlaylist(playlistName);
+    if (newPlaylist) {
+      setPlaylists([...playlists, newPlaylist]);
+      setIsModalOpen(false);
+      setPlaylistName('');
+      onPlaylistCreated(); // Call the callback function
     }
-  };
+  }
+};
+
 
   const getCookie = (name) => {
     const value = `; ${document.cookie}`;
@@ -74,13 +78,13 @@ const PlaylistManager = ({ provider, access_token }) => {
         </div>
         <span>Create Shared Playlist</span>
       </button>
-      <ul className="playlist-list">
+      {/* <ul className="playlist-list">
         {playlists.map((playlist) => (
           <li key={playlist.id} className="playlist-item">
             {playlist.name}
           </li>
         ))}
-      </ul>
+      </ul> */}
       {isModalOpen && (
       <div className="modal-overlay">
         <div className="modal">

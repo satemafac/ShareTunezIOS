@@ -172,6 +172,7 @@ def user_playlists(request):
             'Authorization': f'Bearer {access_token}',
         }
         response = requests.get('https://api.spotify.com/v1/me/playlists', headers=headers)
+        print(response)
 
         if response.status_code == 200:
             data = response.json()
@@ -380,5 +381,4 @@ def logout_view(request):
         return JsonResponse({'status': 'success'})
     else:
         return JsonResponse({'status': 'failed'})
-
 

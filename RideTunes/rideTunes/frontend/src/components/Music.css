@@ -47,7 +47,7 @@ body {
 
 .content {
   padding: 16px;
-  overflow-y: auto; /* Add this line */
+  overflow-y: hidden; /* Add this line */
 
 }
 
@@ -106,5 +106,9 @@ body {
 .user-playlists {
   max-height: calc(100vh - 150px); /* Adjust the height based on your header and tabs height */
   overflow-y: auto; /* Add a scrollbar when the content overflows */
+}
+
+.hidden {
+  display: none;
 }
 
