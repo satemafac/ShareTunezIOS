@@ -55,15 +55,21 @@ const PlaylistCard = ({ provider, accessToken, id, name, imageUrl, description }
         }),
       }
     );
-
+  
     if (response.ok) {
       alert('Playlist shared successfully');
+      // Reset the inputs after a successful share
+      setEnteredUsername('');
+      setEnteredProvider('');
     } else {
       const errorData = await response.json();
+      setEnteredUsername('');
+      setEnteredProvider('');
       alert(`Error sharing playlist: ${errorData.error}`);
     }
     setShowShareByUsernameModal(false);
   };
+  
 
   const handleOpenModal = async () => {
     await fetchPlaylistItems();
@@ -148,32 +154,32 @@ const PlaylistCard = ({ provider, accessToken, id, name, imageUrl, description }
           </div>
         </Modal>
       )}
-    {showShareByUsernameModal && (
-      <Modal onClose={() => setShowShareByUsernameModal(false)}>
-        <div className="share-by-username-modal">
-          <h2>Share Playlist by Username</h2>
-          <form onSubmit={handleShareByUsernameSubmit}>
-            <input
-              type="text"
-              placeholder="Enter username"
-              value={enteredUsername}
-              onChange={(e) => setEnteredUsername(e.target.value)}
-            />
-            <select
-              value={enteredProvider}
-              onChange={(e) => setEnteredProvider(e.target.value)}
-            >
-              <option value="" disabled>
-                Select provider
-              </option>
-              <option value="spotify">Spotify</option>
-              <option value="google-oauth2">YouTube</option>
-            </select>
-            <button type="submit">Share</button>
-          </form>
-        </div>
-      </Modal>
-    )}
+  {showShareByUsernameModal && (
+    <Modal onClose={() => setShowShareByUsernameModal(false)}>
+      <div className="share-by-username-modal">
+        <h2>Share Playlist by Username</h2>
+        <form onSubmit={handleShareByUsernameSubmit}>
+          <input
+            type="text"
+            placeholder="Enter username"
+            value={enteredUsername}
+            onChange={(e) => setEnteredUsername(e.target.value)}
+          />
+          <select
+            value={enteredProvider}
+            onChange={(e) => setEnteredProvider(e.target.value)}
+          >
+            <option value="" disabled>
+              Select provider
+            </option>
+            <option value="spotify">Spotify</option>
+            <option value="YouTube">YouTube</option>
+          </select>
+          <button type="submit" disabled={!enteredProvider}>Share</button> {/* Disable the button if enteredProvider is empty */}
+        </form>
+      </div>
+    </Modal>
+  )}
     </div>
   );
 };

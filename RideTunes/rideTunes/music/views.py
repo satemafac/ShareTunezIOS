@@ -371,6 +371,7 @@ def add_user_to_shared_playlist(request):
         data = json.loads(request.body)
         playlist_id = data.get('playlist_id')
         username = data.get('username')
+        print("Received data:", data)  # Add this line to print the received data
         provider = data.get('creator_provider')
         target_provider = data.get('target_provider')
 
@@ -427,6 +428,7 @@ def add_user_to_shared_playlist(request):
 
         # Find the user by their username
         target_user = User.objects.filter(username=username, userprofile__music_service=target_provider).first()
+        print("Target user:", target_user)  # Debugging print statement
 
 
         # If the user is not found, return an error
