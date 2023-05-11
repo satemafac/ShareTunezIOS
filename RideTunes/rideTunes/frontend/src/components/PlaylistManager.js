@@ -88,7 +88,7 @@ const handleSubmit = async (e) => {
       {isModalOpen && (
       <div className="modal-overlay">
         <div className="modal">
-          <div className="modal-header">
+          <div className="create-modal-header">
             <h2 className="modal-title">Create a Shared Playlist</h2>
             <button className="modal-close" onClick={() => setIsModalOpen(false)}>
               &times;

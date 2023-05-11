@@ -7,7 +7,8 @@ from django.http import HttpResponseRedirect
 from django.http import JsonResponse
 from django.middleware.csrf import get_token
 from rest_framework_simplejwt.tokens import RefreshToken
-from .models import SharedPlaylist
+from django.views.decorators.csrf import csrf_exempt
+from .models import SharedPlaylist, User, UserProfile
 import os
 import requests
 from urllib.parse import urlencode
@@ -312,6 +313,7 @@ def create_shared_playlist(request):
                 # Create and save a new SharedPlaylist instance in the database
                 shared_playlist = SharedPlaylist(
                     name=playlist_name,
+                    master_playlist_id=new_playlist['id'],  # Add this line to save the master playlist ID
                     master_playlist_endpoint=new_playlist['href'],
                     master_playlist_owner=request.user,
                 )
@@ -347,6 +349,7 @@ def create_shared_playlist(request):
                 # Create and save a new SharedPlaylist instance in the database
                 shared_playlist = SharedPlaylist(
                     name=playlist_name,
+                    master_playlist_id=new_playlist['id'],  # Add this line to save the master playlist ID
                     master_playlist_endpoint=f'https://www.googleapis.com/youtube/v3/playlists/{new_playlist["id"]}',
                     master_playlist_owner=request.user,
                 )
@@ -362,6 +365,81 @@ def create_shared_playlist(request):
     else:
         return JsonResponse({'error': 'Invalid request method'}, status=405)
 
+@csrf_exempt
+def add_user_to_shared_playlist(request):
+    if request.method == 'POST':
+        data = json.loads(request.body)
+        playlist_id = data.get('playlist_id')
+        username = data.get('username')
+        provider = data.get('creator_provider')
+        target_provider = data.get('target_provider')
+
+
+        # Check if the playlist ID is in the SharedPlaylist database
+        shared_playlist = SharedPlaylist.objects.filter(master_playlist_id=playlist_id).first()
+
+        if not shared_playlist:
+            # Fetch the user's access token
+            user_profile = request.user.userprofile
+            access_token = user_profile.access_token
+
+            if provider == 'spotify':
+                headers = {'Authorization': f'Bearer {access_token}'}
+                response = requests.get(f'https://api.spotify.com/v1/playlists/{playlist_id}', headers=headers)
+
+                if response.status_code == 200:
+                    playlist_data = response.json()
+
+                    shared_playlist = SharedPlaylist(
+                        name=playlist_data['name'],
+                        master_playlist_endpoint=playlist_data['href'],
+                        master_playlist_id=playlist_id,
+                        master_playlist_owner=request.user,
+                    )
+                    shared_playlist.save()
+                    shared_playlist.users.add(request.user)
+                else:
+                    return JsonResponse({'error': 'Failed to fetch Spotify playlist details'}, status=500)
+            elif provider == 'google-oauth2':
+                credentials = Credentials(token=access_token)
+                youtube = build('youtube', 'v3', credentials=credentials)
+
+                response = youtube.playlists().list(
+                    part='snippet',
+                    id=playlist_id
+                ).execute()
+
+                if 'items' in response and len(response['items']) > 0:
+                    playlist_data = response['items'][0]
+
+                    shared_playlist = SharedPlaylist(
+                        name=playlist_data['snippet']['title'],
+                        master_playlist_endpoint=f'https://www.googleapis.com/youtube/v3/playlists/{playlist_id}',
+                        master_playlist_id=playlist_id,
+                        master_playlist_owner=request.user,
+                    )
+                    shared_playlist.save()
+                    shared_playlist.users.add(request.user)
+                else:
+                    return JsonResponse({'error': 'Failed to fetch YouTube playlist details'}, status=500)
+            else:
+                return JsonResponse({'error': f'Provider {provider} not supported'}, status=400)
+
+        # Find the user by their username
+        target_user = User.objects.filter(username=username, userprofile__music_service=target_provider).first()
+
+
+        # If the user is not found, return an error
+        if not target_user:
+            return JsonResponse({'error': 'User not found'}, status=404)
+
+        # Add the user to the shared playlist
+        shared_playlist.users.add(target_user)
+        shared_playlist.save()
+
+        return JsonResponse({'message': 'User added to the shared playlist'})
+    else:
+        return JsonResponse({'error': 'Invalid request method'}, status=405)
 
 def logout_view(request):
     if request.method == 'POST':

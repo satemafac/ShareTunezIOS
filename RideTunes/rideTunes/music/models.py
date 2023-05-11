@@ -17,6 +17,7 @@ class SharedPlaylist(models.Model):
     name = models.CharField(max_length=255)
     users = models.ManyToManyField(User, related_name="shared_playlists")
     master_playlist_endpoint = models.URLField()  # Field for the master playlist API endpoint
+    master_playlist_id = models.CharField(max_length=255)  # Add this field for the master playlist ID
     master_playlist_owner = models.ForeignKey(  # New field for the master playlist owner
         User, on_delete=models.CASCADE, related_name="owned_shared_playlists"
     )

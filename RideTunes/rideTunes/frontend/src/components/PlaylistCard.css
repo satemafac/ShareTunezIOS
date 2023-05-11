@@ -91,3 +91,23 @@
   text-overflow: ellipsis;
   max-width: 180px;
 }
+
+.share-by-username-modal {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.share-by-username-modal form {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.share-by-username-modal input {
+  padding: 5px;
+  font-size: 14px;
+}
+
