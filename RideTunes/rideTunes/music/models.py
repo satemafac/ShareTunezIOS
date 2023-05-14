@@ -13,6 +13,7 @@ class UserProfile(models.Model):
     def __str__(self):
         return self.user.username
     
+    
 class SharedPlaylist(models.Model):
     name = models.CharField(max_length=255)
     users = models.ManyToManyField(User, related_name="shared_playlists")
@@ -26,6 +27,17 @@ class SharedPlaylist(models.Model):
 
     def __str__(self):
         return self.name
+    
+class PlaylistInvite(models.Model):
+    playlist = models.ForeignKey(SharedPlaylist, on_delete=models.CASCADE)
+    sender = models.ForeignKey(User, related_name='sent_invites', on_delete=models.CASCADE)
+    receiver = models.ForeignKey(User, related_name='received_invites', on_delete=models.CASCADE)
+    target_provider = models.CharField(max_length=255)
+    status = models.CharField(max_length=10, choices=[
+        ('pending', 'Pending'),
+        ('accepted', 'Accepted'),
+        ('declined', 'Declined'),
+    ], default='pending')
 
 
 @receiver(post_save, sender=User)

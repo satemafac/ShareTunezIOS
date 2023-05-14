@@ -8,7 +8,7 @@ from django.http import JsonResponse
 from django.middleware.csrf import get_token
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.views.decorators.csrf import csrf_exempt
-from .models import SharedPlaylist, User, UserProfile
+from .models import SharedPlaylist, User, UserProfile,PlaylistInvite
 import os
 import requests
 from urllib.parse import urlencode
@@ -364,21 +364,19 @@ def create_shared_playlist(request):
             return JsonResponse({'error': f'Provider {provider} not supported'}, status=400)
     else:
         return JsonResponse({'error': 'Invalid request method'}, status=405)
-
+    
 @csrf_exempt
-def add_user_to_shared_playlist(request):
+def send_invite(request):
     if request.method == 'POST':
         data = json.loads(request.body)
         playlist_id = data.get('playlist_id')
         username = data.get('username')
-        print("Received data:", data)  # Add this line to print the received data
-        provider = data.get('creator_provider')
         target_provider = data.get('target_provider')
+        provider = data.get('creator_provider') # The provider of the sender
 
-
-        # Check if the playlist ID is in the SharedPlaylist database
         shared_playlist = SharedPlaylist.objects.filter(master_playlist_id=playlist_id).first()
 
+        # If the playlist is not in SharedPlaylist, fetch its details and add it
         if not shared_playlist:
             # Fetch the user's access token
             user_profile = request.user.userprofile
@@ -426,22 +424,101 @@ def add_user_to_shared_playlist(request):
             else:
                 return JsonResponse({'error': f'Provider {provider} not supported'}, status=400)
 
-        # Find the user by their username
         target_user = User.objects.filter(username=username, userprofile__music_service=target_provider).first()
-        print("Target user:", target_user)  # Debugging print statement
 
-
-        # If the user is not found, return an error
         if not target_user:
             return JsonResponse({'error': 'User not found'}, status=404)
 
-        # Add the user to the shared playlist
-        shared_playlist.users.add(target_user)
-        shared_playlist.save()
+        # Check if an invite already exists
+        existing_invite = PlaylistInvite.objects.filter(
+            playlist=shared_playlist, 
+            sender=request.user, 
+            receiver=target_user,
+            status='pending'
+        ).first()
 
-        return JsonResponse({'message': 'User added to the shared playlist'})
+        if existing_invite:
+            return JsonResponse({'message': 'An invite has already been sent to this user.'}, status=200)
+
+        # Check if the user has already accepted an invite
+        accepted_invite = PlaylistInvite.objects.filter(
+            playlist=shared_playlist, 
+            sender=request.user, 
+            receiver=target_user,
+            status='accepted'
+        ).first()
+
+        if accepted_invite:
+            return JsonResponse({'message': 'This user has already accepted an invite to this playlist.'}, status=200)
+
+        invite = PlaylistInvite(
+            playlist=shared_playlist,
+            sender=request.user,
+            receiver=target_user,
+            status='pending',
+            target_provider=target_provider
+        )
+        invite.save()
+
+        # Send a notification to the target user here (e.g., email or in-app notification)
+
+        
+        return JsonResponse({'message': 'Playlist Invite sent!'})
     else:
         return JsonResponse({'error': 'Invalid request method'}, status=405)
+
+ 
+# This function will be used to accept an invite to a shared playlist
+@csrf_exempt
+def accept_invite(request):
+    if request.method == 'POST':
+        data = json.loads(request.body)
+        invite_id = data.get('invite_id')
+
+        invite = PlaylistInvite.objects.filter(id=invite_id).first()
+
+        if not invite:
+            return JsonResponse({'error': 'Invite not found'}, status=404)
+
+        invite.status = 'accepted'
+        invite.save()
+
+        add_user_to_shared_playlist(invite.playlist.master_playlist_id, invite.receiver.username, invite.playlist.master_playlist_owner.userprofile.music_service, invite.receiver.userprofile.music_service)
+        
+        return JsonResponse({'message': 'Invite accepted'})
+    else:
+        return JsonResponse({'error': 'Invalid request method'}, status=405)
+
+# This function will add a user to a shared playlist
+def add_user_to_shared_playlist(playlist_id, username, provider, target_provider):
+    shared_playlist = SharedPlaylist.objects.filter(master_playlist_id=playlist_id).first()
+    target_user = User.objects.filter(username=username, userprofile__music_service=target_provider).first()
+
+    if not shared_playlist or not target_user:
+        return
+
+    shared_playlist.users.add(target_user)
+    shared_playlist.save()
+
+@csrf_exempt
+def decline_invite(request):
+    if request.method == 'POST':
+        data = json.loads(request.body)
+        invite_id = data.get('invite_id')
+
+        invite = PlaylistInvite.objects.filter(id=invite_id, receiver=request.user, status='pending').first()
+
+        if not invite:
+            return JsonResponse({'error': 'Invalid invite'}, status=400)
+
+        invite.status = 'declined'
+        invite.save()
+
+        return JsonResponse({'message': 'Invite declined'})
+
+    else:
+        return JsonResponse({'error': 'Invalid request method'}, status=405)
+
 
 def logout_view(request):
     if request.method == 'POST':

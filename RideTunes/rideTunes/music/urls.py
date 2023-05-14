@@ -15,7 +15,8 @@ urlpatterns = [
     path('accounts/logout/', auth_views.LogoutView.as_view(), name='logout'),
     path('api/create_shared_playlist/', views.create_shared_playlist, name='create_shared_playlist'),
     path('api/fetch_playlist_items/', views.fetch_playlist_items, name='fetch_playlist_items'),
-    path('api/add_user_to_shared_playlist/', views.add_user_to_shared_playlist, name='add_user_to_shared_playlist'),
-
+    path('api/send_invite/', views.send_invite, name='send_invite'),
+    path('api/accept_invite/', views.accept_invite, name='accept_invite'),
+    path('api/decline_invite/', views.decline_invite, name='decline_invite'),
     # ...
 ]

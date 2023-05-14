@@ -40,7 +40,7 @@ const PlaylistCard = ({ provider, accessToken, id, name, imageUrl, description }
   const handleShareByUsernameSubmit = async (event) => {
     event.preventDefault();
     const response = await fetch(
-      `${process.env.REACT_APP_BACKEND_URL}/music/api/add_user_to_shared_playlist/`,
+      `${process.env.REACT_APP_BACKEND_URL}/music/api/send_invite/`,
       {
         method: 'POST',
         credentials: 'include',
@@ -56,17 +56,17 @@ const PlaylistCard = ({ provider, accessToken, id, name, imageUrl, description }
       }
     );
   
+    const responseData = await response.json(); // Extract JSON data from response
+  
     if (response.ok) {
-      alert('Playlist shared successfully');
-      // Reset the inputs after a successful share
-      setEnteredUsername('');
-      setEnteredProvider('');
+      alert(responseData.message); // Alert the message from the server
     } else {
-      const errorData = await response.json();
-      setEnteredUsername('');
-      setEnteredProvider('');
-      alert(`Error sharing playlist: ${errorData.error}`);
+      alert(`Error sharing playlist: ${responseData.error}`);
     }
+  
+    // Reset the inputs after a successful share
+    setEnteredUsername('');
+    setEnteredProvider('');
     setShowShareByUsernameModal(false);
   };
   
