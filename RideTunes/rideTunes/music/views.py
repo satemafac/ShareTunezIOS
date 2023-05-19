@@ -8,7 +8,7 @@ from django.http import JsonResponse
 from django.middleware.csrf import get_token
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.views.decorators.csrf import csrf_exempt
-from .models import SharedPlaylist, User, UserProfile,PlaylistInvite
+from .models import SharedPlaylist, User, UserProfile,PlaylistInvite,Notification
 import os
 import requests
 from urllib.parse import urlencode
@@ -460,10 +460,25 @@ def send_invite(request):
         )
         invite.save()
 
+        # Create a new notification for the target user
+        notification_message = f"You've been invited by {request.user.username} to join a playlist!"
+        Notification.objects.create(user=target_user, message=notification_message)
+
         # Send a notification to the target user here (e.g., email or in-app notification)
 
         
         return JsonResponse({'message': 'Playlist Invite sent!'})
+    else:
+        return JsonResponse({'error': 'Invalid request method'}, status=405)
+    
+
+@csrf_exempt
+def fetch_notifications(request):
+    if request.method == 'GET':
+        notifications = Notification.objects.filter(user=request.user, read=False)
+        response_data = [{'message': n.message, 'timestamp': n.timestamp} for n in notifications]
+        return JsonResponse(response_data, safe=False)
+
     else:
         return JsonResponse({'error': 'Invalid request method'}, status=405)
 

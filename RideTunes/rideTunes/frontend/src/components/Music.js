@@ -10,6 +10,10 @@ import Tabs from '@mui/material/Tabs';
 import Tab from '@mui/material/Tab';
 import PlayCircleOutlineIcon from '@mui/icons-material/PlayCircleOutline';
 import LibraryMusicIcon from '@mui/icons-material/LibraryMusic';
+import Badge from '@mui/material/Badge';
+import IconButton from '@mui/material/IconButton';
+import NotificationsIcon from '@mui/icons-material/Notifications';
+import Modal from '@mui/material/Modal';
 
 const Music = () => {
   const [isDropdownVisible, setDropdownVisible] = useState(false);
@@ -21,6 +25,9 @@ const Music = () => {
   const [username, setUsername] = useState('');
   const [activeTab, setActiveTab] = useState(0); // Change this line
   const [playlistUpdated, setPlaylistUpdated] = useState(false);
+  const [notifications, setNotifications] = useState([]);
+  const [isNotificationModalOpen, setNotificationModalOpen] = useState(false);
+
 
 
   const handleChange = (event, newValue) => {
@@ -135,6 +142,25 @@ const Music = () => {
       console.error('Logout error:', error);
     }
   };
+
+  useEffect(() => {
+    const fetchNotifications = async () => {
+      const response = await fetch(
+        `${process.env.REACT_APP_BACKEND_URL}/music/api/fetch_notifications/`,
+        { credentials: 'include' }
+      );
+  
+      if (response.ok) {
+        const data = await response.json();
+        setNotifications(data);
+      } else {
+        console.error('Failed to fetch notifications');
+      }
+    };
+  
+    fetchNotifications();
+  }, [isNotificationModalOpen]);
+  
   
 
   useEffect(() => {
@@ -168,20 +194,39 @@ const Music = () => {
         <header className="header">
           <h1 className="title">RideTunes</h1>
           <div className="profile" ref={dropdownRef}>
-            <img
-              src={userProfile.profile_image || 'https://via.placeholder.com/40'}
-              alt="Profile"
-              className="profile-image"
-              onClick={() => setDropdownVisible(!isDropdownVisible)}
-            />
-            <span className="username">{userProfile.display_name}</span>
-            {isDropdownVisible && (
-              <ul className="dropdown-menu">
-                <li onClick={() => console.log('Settings clicked')}>Settings</li>
-                <li onClick={handleLogout}>Logout</li>
-              </ul>
-            )}
-          </div>
+  <IconButton aria-label="show new notifications" color="inherit" onClick={() => setNotificationModalOpen(true)}>
+    <Badge badgeContent={notifications.length} color="secondary">
+      <NotificationsIcon />
+    </Badge>
+  </IconButton>
+  <img
+    src={userProfile.profile_image || 'https://via.placeholder.com/40'}
+    alt="Profile"
+    className="profile-image"
+    onClick={() => setDropdownVisible(!isDropdownVisible)}
+  />
+  <span className="username">{userProfile.display_name}</span>
+  {isDropdownVisible && (
+    <ul className="dropdown-menu">
+      <li onClick={() => console.log('Settings clicked')}>Settings</li>
+      <li onClick={handleLogout}>Logout</li>
+    </ul>
+  )}
+</div>
+
+<Modal
+  open={isNotificationModalOpen}
+  onClose={() => setNotificationModalOpen(false)}
+  aria-labelledby="simple-modal-title"
+  aria-describedby="simple-modal-description"
+>
+  <div style={{backgroundColor: 'white', padding: '20px'}}>
+    <h2>Notifications</h2>
+    {notifications.map((notification, index) => (
+      <p key={index}>{notification.message} at {notification.timestamp}</p>
+    ))}
+  </div>
+</Modal>
         </header>
         <main className="content">
           <div className="playlist-creation">
