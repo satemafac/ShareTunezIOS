@@ -14,6 +14,11 @@ import Badge from '@mui/material/Badge';
 import IconButton from '@mui/material/IconButton';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import Modal from '@mui/material/Modal';
+import Button from '@mui/material/Button';
+import Card from '@mui/material/Card';
+import CardContent from '@mui/material/CardContent';
+import Typography from '@mui/material/Typography';
+import CardActions from '@mui/material/CardActions';
 
 const Music = () => {
   const [isDropdownVisible, setDropdownVisible] = useState(false);
@@ -213,7 +218,6 @@ const Music = () => {
     </ul>
   )}
 </div>
-
 <Modal
   open={isNotificationModalOpen}
   onClose={() => setNotificationModalOpen(false)}
@@ -221,10 +225,40 @@ const Music = () => {
   aria-describedby="simple-modal-description"
 >
   <div style={{backgroundColor: 'white', padding: '20px'}}>
-    <h2>Notifications</h2>
+  <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '20px' }}>
+      <h2>Notifications</h2>
+    </div>
     {notifications.map((notification, index) => (
-      <p key={index}>{notification.message} at {notification.timestamp}</p>
-    ))}
+  <Card key={index} style={{ margin: '10px 0' }}>
+    <CardContent>
+      <div style={{ display: 'flex', alignItems: 'center' }}>
+        <img
+          src={notification.playlist_image || 'https://via.placeholder.com/40'}
+          alt="Playlist"
+          style={{ width: '40px', height: '40px', marginRight: '10px' }}
+        />
+        <div>
+          <Typography variant="body2" color="textSecondary" component="p">
+            {/* Format the timestamp into a short date */}
+            {new Date(notification.timestamp).toLocaleDateString()}
+          </Typography>
+          <Typography variant="body2" color="textSecondary" component="p">
+            {notification.message}
+          </Typography>
+        </div>
+      </div>
+    </CardContent>
+    <CardActions>
+      <Button size="small" color="primary" onClick={() => {/* Accept logic */}}>
+        Accept
+      </Button>
+      <Button size="small" color="primary" onClick={() => {/* Decline logic */}}>
+        Decline
+      </Button>
+    </CardActions>
+  </Card>
+))}
+
   </div>
 </Modal>
         </header>

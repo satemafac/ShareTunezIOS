@@ -391,6 +391,7 @@ def send_invite(request):
 
                     shared_playlist = SharedPlaylist(
                         name=playlist_data['name'],
+                        image_url=playlist_data['images'][0]['url'] if playlist_data['images'] else None,  # New line
                         master_playlist_endpoint=playlist_data['href'],
                         master_playlist_id=playlist_id,
                         master_playlist_owner=request.user,
@@ -413,6 +414,7 @@ def send_invite(request):
 
                     shared_playlist = SharedPlaylist(
                         name=playlist_data['snippet']['title'],
+                        image_url=playlist_data['snippet']['thumbnails']['high']['url'] if 'thumbnails' in playlist_data['snippet'] and 'high' in playlist_data['snippet']['thumbnails'] else None,  # New line
                         master_playlist_endpoint=f'https://www.googleapis.com/youtube/v3/playlists/{playlist_id}',
                         master_playlist_id=playlist_id,
                         master_playlist_owner=request.user,
@@ -424,6 +426,7 @@ def send_invite(request):
             else:
                 return JsonResponse({'error': f'Provider {provider} not supported'}, status=400)
 
+        print(username, target_provider)
         target_user = User.objects.filter(username=username, userprofile__music_service=target_provider).first()
 
         if not target_user:
@@ -461,8 +464,8 @@ def send_invite(request):
         invite.save()
 
         # Create a new notification for the target user
-        notification_message = f"You've been invited by {request.user.username} to join a playlist!"
-        Notification.objects.create(user=target_user, message=notification_message)
+        notification_message = f"You've been invited by {request.user.username} to join the playlist {shared_playlist.name}!"
+        Notification.objects.create(user=target_user, message=notification_message, playlist=shared_playlist)
 
         # Send a notification to the target user here (e.g., email or in-app notification)
 
@@ -476,11 +479,20 @@ def send_invite(request):
 def fetch_notifications(request):
     if request.method == 'GET':
         notifications = Notification.objects.filter(user=request.user, read=False)
-        response_data = [{'message': n.message, 'timestamp': n.timestamp} for n in notifications]
+        response_data = [
+            {
+                'message': n.message, 
+                'timestamp': n.timestamp, 
+                'playlist_name': n.playlist.name if n.playlist else None,
+                'playlist_image': n.playlist.image_url if n.playlist else None
+            } 
+            for n in notifications
+        ]
         return JsonResponse(response_data, safe=False)
 
     else:
         return JsonResponse({'error': 'Invalid request method'}, status=405)
+
 
  
 # This function will be used to accept an invite to a shared playlist

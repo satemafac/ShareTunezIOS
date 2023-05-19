@@ -172,7 +172,7 @@ const PlaylistCard = ({ provider, accessToken, id, name, imageUrl, description }
             <option value="" disabled>
               Select provider
             </option>
-            <option value="spotify">Spotify</option>
+            <option value="Spotify">Spotify</option>
             <option value="YouTube">YouTube</option>
           </select>
           <button type="submit" disabled={!enteredProvider}>Share</button> {/* Disable the button if enteredProvider is empty */}
