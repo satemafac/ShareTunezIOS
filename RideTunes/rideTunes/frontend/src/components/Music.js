@@ -32,7 +32,7 @@ const Music = () => {
   const [playlistUpdated, setPlaylistUpdated] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [isNotificationModalOpen, setNotificationModalOpen] = useState(false);
-
+  const [isAcceptingInvite, setIsAcceptingInvite] = useState(false);
 
 
   const handleChange = (event, newValue) => {
@@ -148,26 +148,77 @@ const Music = () => {
     }
   };
 
+  const fetchNotifications = async () => {
+    const response = await fetch(
+      `${process.env.REACT_APP_BACKEND_URL}/music/api/fetch_notifications/`,
+      { credentials: 'include' }
+    );
+
+    if (response.ok) {
+      const data = await response.json();
+      console.log(data)
+      setNotifications(data);
+    } else {
+      console.error('Failed to fetch notifications');
+    }
+  };
+
   useEffect(() => {
-    const fetchNotifications = async () => {
-      const response = await fetch(
-        `${process.env.REACT_APP_BACKEND_URL}/music/api/fetch_notifications/`,
-        { credentials: 'include' }
-      );
+    fetchNotifications();
+  }, [isNotificationModalOpen, setPlaylistUpdated]);
+  
+  
+  const acceptInvite = async (notificationId) => {
+    setIsAcceptingInvite(true);
+    try {
+      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/music/api/accept_invite/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': getCookie('csrftoken'),
+        },
+        body: JSON.stringify({ notification_id: notificationId }), // Include the notification_id in the request body
+        credentials: 'include',
+      });
   
       if (response.ok) {
-        const data = await response.json();
-        setNotifications(data);
+        // if request is successful, update notifications
+        fetchNotifications();
+        // update playlistUpdated to refresh the playlists
+        setPlaylistUpdated(prevState => !prevState);
       } else {
-        console.error('Failed to fetch notifications');
+        console.error('Accept invite failed.');
       }
-    };
+    } catch (error) {
+      console.error('Accept invite error:', error);
+    } finally {
+      setIsAcceptingInvite(false);
+    }
+  };
   
-    fetchNotifications();
-  }, [isNotificationModalOpen]);
+  const declineInvite = async (notificationId) => {
+    try {
+      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/music/api/decline_invite/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': getCookie('csrftoken'),
+        },
+        body: JSON.stringify({ notification_id: notificationId }), // Include the notification_id in the request body
+        credentials: 'include',
+      });
   
+      if (response.ok) {
+        // if request is successful, update notifications
+        fetchNotifications();
+      } else {
+        console.error('Decline invite failed.');
+      }
+    } catch (error) {
+      console.error('Decline invite error:', error);
+    }
+  };
   
-
   useEffect(() => {
     const fetchUserProfile = async () => {
       // Get the provider's access token and provider from local storage
@@ -225,42 +276,49 @@ const Music = () => {
   aria-describedby="simple-modal-description"
 >
   <div style={{backgroundColor: 'white', padding: '20px'}}>
-  <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '20px' }}>
+    <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '20px' }}>
       <h2>Notifications</h2>
     </div>
-    {notifications.map((notification, index) => (
-  <Card key={index} style={{ margin: '10px 0' }}>
-    <CardContent>
-      <div style={{ display: 'flex', alignItems: 'center' }}>
-        <img
-          src={notification.playlist_image || 'https://via.placeholder.com/40'}
-          alt="Playlist"
-          style={{ width: '40px', height: '40px', marginRight: '10px' }}
-        />
-        <div>
-          <Typography variant="body2" color="textSecondary" component="p">
-            {/* Format the timestamp into a short date */}
-            {new Date(notification.timestamp).toLocaleDateString()}
-          </Typography>
-          <Typography variant="body2" color="textSecondary" component="p">
-            {notification.message}
-          </Typography>
-        </div>
+    {isAcceptingInvite ? (
+      <div style={{ display: 'flex', justifyContent: 'center' }}>
+        {/* replace 'Loading...' with your actual loading animation component or element */}
+        <p>Loading...</p>
       </div>
-    </CardContent>
-    <CardActions>
-      <Button size="small" color="primary" onClick={() => {/* Accept logic */}}>
-        Accept
-      </Button>
-      <Button size="small" color="primary" onClick={() => {/* Decline logic */}}>
-        Decline
-      </Button>
-    </CardActions>
-  </Card>
-))}
-
+    ) : (
+      notifications.map((notification, index) => (
+        <Card key={index} style={{ margin: '10px 0' }}>
+          <CardContent>
+            <div style={{ display: 'flex', alignItems: 'center' }}>
+              <img
+                src={notification.playlist_image || 'https://via.placeholder.com/40'}
+                alt="Playlist"
+                style={{ width: '40px', height: '40px', marginRight: '10px' }}
+              />
+              <div>
+                <Typography variant="body2" color="textSecondary" component="p">
+                  {/* Format the timestamp into a short date */}
+                  {new Date(notification.timestamp).toLocaleDateString()}
+                </Typography>
+                <Typography variant="body2" color="textSecondary" component="p">
+                  {notification.message}
+                </Typography>
+              </div>
+            </div>
+          </CardContent>
+          <CardActions>
+            <Button size="small" color="primary" onClick={() => acceptInvite(notification.id)}>
+              Accept
+            </Button>
+            <Button size="small" color="primary" onClick={() => declineInvite(notification.id)}>
+              Decline
+            </Button>
+          </CardActions>
+        </Card>
+      ))
+    )}
   </div>
 </Modal>
+
         </header>
         <main className="content">
           <div className="playlist-creation">

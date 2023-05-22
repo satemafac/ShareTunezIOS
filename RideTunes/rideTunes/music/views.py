@@ -366,6 +366,25 @@ def create_shared_playlist(request):
         return JsonResponse({'error': 'Invalid request method'}, status=405)
     
 @csrf_exempt
+def fetch_notifications(request):
+    if request.method == 'GET':
+        notifications = Notification.objects.filter(user=request.user, read=False)
+        response_data = [
+            {
+                'id': n.id,
+                'message': n.message, 
+                'timestamp': n.timestamp, 
+                'playlist_name': n.playlist.name if n.playlist else None,
+                'playlist_image': n.playlist.image_url if n.playlist else None
+            } 
+            for n in notifications
+        ]
+        return JsonResponse(response_data, safe=False)
+
+    else:
+        return JsonResponse({'error': 'Invalid request method'}, status=405)
+    
+@csrf_exempt
 def send_invite(request):
     if request.method == 'POST':
         data = json.loads(request.body)
@@ -465,7 +484,12 @@ def send_invite(request):
 
         # Create a new notification for the target user
         notification_message = f"You've been invited by {request.user.username} to join the playlist {shared_playlist.name}!"
-        Notification.objects.create(user=target_user, message=notification_message, playlist=shared_playlist)
+        Notification.objects.create(
+            user=target_user, 
+            message=notification_message, 
+            playlist=shared_playlist,
+            invite=invite  # Include the invite
+        )
 
         # Send a notification to the target user here (e.g., email or in-app notification)
 
@@ -475,46 +499,176 @@ def send_invite(request):
         return JsonResponse({'error': 'Invalid request method'}, status=405)
     
 
-@csrf_exempt
-def fetch_notifications(request):
-    if request.method == 'GET':
-        notifications = Notification.objects.filter(user=request.user, read=False)
-        response_data = [
-            {
-                'message': n.message, 
-                'timestamp': n.timestamp, 
-                'playlist_name': n.playlist.name if n.playlist else None,
-                'playlist_image': n.playlist.image_url if n.playlist else None
-            } 
-            for n in notifications
-        ]
-        return JsonResponse(response_data, safe=False)
+def fetch_playlist_tracks(playlist_id, music_service, username):
+    user_profile = User.objects.filter(username=username, userprofile__music_service=music_service).first()
+
+    if not user_profile:
+        print(f'User with username {username} and music_service {music_service} not found')
+        return []
+
+    access_token = user_profile.userprofile.access_token
+
+    if music_service == 'Spotify':
+        headers = {'Authorization': f'Bearer {access_token}'}
+        response = requests.get(f'https://api.spotify.com/v1/playlists/{playlist_id}/tracks', headers=headers)
+
+        if response.status_code == 200:
+            track_data = response.json()
+            # Extract track info from the response
+            tracks = [{'id': item['track']['id'], 
+                       'name': item['track']['name'], 
+                       'artist': item['track']['artists'][0]['name']} for item in track_data['items']]
+            print(tracks)
+            return tracks
+        else:
+            print('Failed to fetch Spotify playlist tracks')
+            return []
+
+    elif music_service == 'YouTube':
+        credentials = Credentials(token=access_token)
+        youtube = build('youtube', 'v3', credentials=credentials, cache_discovery=False)
+
+        response = youtube.playlistItems().list(
+            part='snippet',
+            maxResults=50,
+            playlistId=playlist_id
+        ).execute()
+
+        if 'items' in response:
+            # Extract video info from the response
+            videos = [{'id': item['snippet']['resourceId']['videoId'], 
+                       'name': item['snippet']['title'], 
+                       'artist': item['snippet']['videoOwnerChannelTitle']} for item in response['items']]
+            print(videos)
+            return videos
+        else:
+            print('Failed to fetch YouTube playlist tracks')
+            return []
 
     else:
-        return JsonResponse({'error': 'Invalid request method'}, status=405)
-
-
+        print(f'Music service {music_service} not supported')
+        return []
  
+def create_and_populate_playlist(tracks, username, music_service, playlist_name):
+    user_profile = UserProfile.objects.get(user__username=username, music_service=music_service)
+    access_token = user_profile.access_token
+
+    if music_service == 'Spotify':
+        headers = {'Authorization': f'Bearer {access_token}'}
+        data = {
+            'name': playlist_name,
+            'description': 'This playlist was shared via MusicShare!',
+            'public': False
+        }
+        response = requests.post(f'https://api.spotify.com/v1/users/{username}/playlists', headers=headers, json=data)
+
+        if response.status_code == 201:
+            playlist_data = response.json()
+            new_playlist_id = playlist_data['id']
+
+            # Populate the new playlist with tracks
+            for track in tracks:
+                # Search for the track by name and artist
+                search_query = f"{track['name']} {track['artist']}"
+                response = requests.get(f"https://api.spotify.com/v1/search?q={search_query}&type=track&limit=1", headers=headers)
+                if response.status_code == 200:
+                    search_results = response.json()
+                    if search_results['tracks']['items']:
+                        track_id = search_results['tracks']['items'][0]['id']
+                        # Add the track to the new playlist
+                        requests.post(f"https://api.spotify.com/v1/playlists/{new_playlist_id}/tracks", headers=headers, json={'uris': [f"spotify:track:{track_id}"]})
+
+        else:
+            print('Failed to create Spotify playlist')
+            return
+
+    elif music_service == 'YouTube':
+        credentials = Credentials(token=access_token)
+        youtube = build('youtube', 'v3', credentials=credentials, cache_discovery=False)
+
+        data = {
+            'snippet': {
+                'title': playlist_name,
+                'description': 'This playlist was shared via MusicShare!'
+            },
+            'status': {
+                'privacyStatus': 'private'
+            }
+        }
+        response = youtube.playlists().insert(part='snippet,status', body=data).execute()
+
+        if 'id' in response:
+            new_playlist_id = response['id']
+
+            # Populate the new playlist with tracks
+            for track in tracks:
+                # Search for the track by name and artist
+                search_query = f"{track['name']} {track['artist']}"
+                response = youtube.search().list(q=search_query, part='snippet', maxResults=1, type='video').execute()
+                if 'items' in response and response['items']:
+                    video_id = response['items'][0]['id']['videoId']
+                    # Add the video to the new playlist
+                    insert_data = {
+                        'snippet': {
+                            'playlistId': new_playlist_id,
+                            'resourceId': {
+                                'kind': 'youtube#video',
+                                'videoId': video_id
+                            }
+                        }
+                    }
+                    youtube.playlistItems().insert(part='snippet', body=insert_data).execute()
+
+        else:
+            print('Failed to create YouTube playlist')
+            return
+
+    else:
+        print(f'Music service {music_service} not supported')
+        return
+
+
 # This function will be used to accept an invite to a shared playlist
 @csrf_exempt
 def accept_invite(request):
     if request.method == 'POST':
         data = json.loads(request.body)
-        invite_id = data.get('invite_id')
+        notification_id = data.get('notification_id')
 
-        invite = PlaylistInvite.objects.filter(id=invite_id).first()
+        notification = Notification.objects.filter(id=notification_id).first()
 
-        if not invite:
+        if not notification or not notification.invite:
             return JsonResponse({'error': 'Invite not found'}, status=404)
+
+        invite = notification.invite
+
+        master_playlist_id = invite.playlist.master_playlist_id
+        master_playlist_service = invite.playlist.master_playlist_owner.userprofile.music_service
+        sender_username = invite.sender.username
+        receiver_username =  invite.receiver.username
+        sender_service = invite.sender.userprofile.music_service
+        reciever_service = invite.receiver.userprofile.music_service
+
 
         invite.status = 'accepted'
         invite.save()
 
-        add_user_to_shared_playlist(invite.playlist.master_playlist_id, invite.receiver.username, invite.playlist.master_playlist_owner.userprofile.music_service, invite.receiver.userprofile.music_service)
-        
+        # Update related notification to read
+        related_notification = Notification.objects.filter(user=invite.receiver, playlist=invite.playlist).first()
+        if related_notification:
+            related_notification.read = True
+            related_notification.save()
+
+        # Fetch the tracks from the master playlist
+        tracks = fetch_playlist_tracks(master_playlist_id, master_playlist_service, sender_username)
+
+        # Create a new playlist in the receiver's music service and populate it with tracks
+        create_and_populate_playlist(tracks, receiver_username, reciever_service, invite.playlist.name)
+
         return JsonResponse({'message': 'Invite accepted'})
     else:
         return JsonResponse({'error': 'Invalid request method'}, status=405)
+
 
 # This function will add a user to a shared playlist
 def add_user_to_shared_playlist(playlist_id, username, provider, target_provider):
@@ -531,15 +685,23 @@ def add_user_to_shared_playlist(playlist_id, username, provider, target_provider
 def decline_invite(request):
     if request.method == 'POST':
         data = json.loads(request.body)
-        invite_id = data.get('invite_id')
+        notification_id = data.get('notification_id')
 
-        invite = PlaylistInvite.objects.filter(id=invite_id, receiver=request.user, status='pending').first()
+        notification = Notification.objects.filter(id=notification_id).first()
 
-        if not invite:
+        if not notification or not notification.invite:
             return JsonResponse({'error': 'Invalid invite'}, status=400)
+
+        invite = notification.invite
 
         invite.status = 'declined'
         invite.save()
+
+        # Update related notification to read
+        related_notification = Notification.objects.filter(user=invite.receiver, playlist=invite.playlist).first()
+        if related_notification:
+            related_notification.read = True
+            related_notification.save()
 
         return JsonResponse({'message': 'Invite declined'})
 

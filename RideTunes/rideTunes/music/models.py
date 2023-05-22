@@ -43,10 +43,12 @@ class PlaylistInvite(models.Model):
 
 class Notification(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notifications')
-    playlist = models.ForeignKey(SharedPlaylist, on_delete=models.SET_NULL, null=True, blank=True)  # New field
+    playlist = models.ForeignKey(SharedPlaylist, on_delete=models.SET_NULL, null=True, blank=True)
+    invite = models.ForeignKey(PlaylistInvite, on_delete=models.SET_NULL, null=True, blank=True)  # New field
     message = models.CharField(max_length=512)
     read = models.BooleanField(default=False)
     timestamp = models.DateTimeField(auto_now_add=True)
+
 
 @receiver(post_save, sender=User)
 def create_user_profile(sender, instance, created, **kwargs):
