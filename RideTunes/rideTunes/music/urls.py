@@ -18,6 +18,7 @@ urlpatterns = [
     path('api/send_invite/', views.send_invite, name='send_invite'),
     path('api/accept_invite/', views.accept_invite, name='accept_invite'),
     path('api/decline_invite/', views.decline_invite, name='decline_invite'),
+    path('api/available_devices/', views.available_devices, name='available_devices'),
     path('api/fetch_notifications/', views.fetch_notifications, name='fetch_notifications'),
 
     # ...

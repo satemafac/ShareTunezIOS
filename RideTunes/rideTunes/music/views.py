@@ -707,6 +707,33 @@ def decline_invite(request):
 
     else:
         return JsonResponse({'error': 'Invalid request method'}, status=405)
+    
+def available_devices(request):
+    try:
+        provider = request.GET.get('provider')
+
+        if provider == 'spotify':
+            access_token = request.GET.get('access_token')
+            if not access_token:
+                return JsonResponse({'error': 'No access token provided'}, status=400)
+            headers = {
+                'Authorization': f'Bearer {access_token}',
+            }
+            response = requests.get('https://api.spotify.com/v1/me/player/devices', headers=headers)
+
+            if response.status_code == 200:
+                data = response.json()
+                devices = data.get('devices')
+                return JsonResponse({'devices': devices})
+            else:
+                return JsonResponse({'error': f'Failed to fetch Spotify user devices, status code {response.status_code}'}, status=500)
+        else:
+            return JsonResponse({'error': f'Provider {provider} not supported'}, status=400)
+    except Exception as e:
+        # Log the error message to debug easier
+        print(f"Error in available_devices view: {str(e)}")
+        return JsonResponse({'error': 'Internal Server Error'}, status=500)
+
 
 
 def logout_view(request):

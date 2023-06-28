@@ -27,6 +27,7 @@ const Music = () => {
   const dropdownRef = useRef(null);
   const navigate = useNavigate();
   const provider = localStorage.getItem('provider');
+  const access_token = localStorage.getItem('access_token');
   const [username, setUsername] = useState('');
   const [activeTab, setActiveTab] = useState(0); // Change this line
   const [playlistUpdated, setPlaylistUpdated] = useState(false);
@@ -361,7 +362,7 @@ const Music = () => {
         className="music-player"
         style={activeTab !== 1 ? { display: "none" } : {}}
       >
-        <MusicPlayer />
+        <MusicPlayer provider={provider} access_token={access_token}/>
       </div>
         </main>
       </div>

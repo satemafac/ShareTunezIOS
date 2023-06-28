@@ -62,4 +62,13 @@
   margin-top: 10px;
 }
 
+.qr-code-modal {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+  height: 100%;
+}
+
+
 /* ... (Rest of the CSS code) */

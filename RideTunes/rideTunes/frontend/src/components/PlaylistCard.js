@@ -5,6 +5,7 @@ import './PlaylistItems.css';
 import GroupAddIcon from '@mui/icons-material/GroupAdd'; // Add this import
 import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
+import QRCode from 'qrcode.react';
 
 
 
@@ -15,6 +16,7 @@ const PlaylistCard = ({ provider, accessToken, id, name, imageUrl, description }
   const [showShareByUsernameModal, setShowShareByUsernameModal] = useState(false);
   const [enteredUsername, setEnteredUsername] = useState('');
   const [enteredProvider, setEnteredProvider] = useState('');
+  const [showQRCodeModal, setShowQRCodeModal] = useState(false);
 
   const fetchPlaylistItems = async () => {
     try {
@@ -70,6 +72,10 @@ const PlaylistCard = ({ provider, accessToken, id, name, imageUrl, description }
     setShowShareByUsernameModal(false);
   };
   
+  const handleShareByQRCode = () => {
+    handleMenuClose();
+    setShowQRCodeModal(true); // Show the QR code modal
+  };
 
   const handleOpenModal = async () => {
     await fetchPlaylistItems();
@@ -89,11 +95,6 @@ const PlaylistCard = ({ provider, accessToken, id, name, imageUrl, description }
     setShowShareByUsernameModal(true);
   };
   
-  
-  const handleShareByQRCode = () => {
-    handleMenuClose();
-    // Your logic for sharing the playlist by QR code
-  };
   
 
   return (
@@ -180,6 +181,14 @@ const PlaylistCard = ({ provider, accessToken, id, name, imageUrl, description }
       </div>
     </Modal>
   )}
+  {showQRCodeModal && (
+  <Modal onClose={() => setShowQRCodeModal(false)}>
+    <div className="qr-code-modal">
+      <h2>Share Playlist by QR Code</h2>
+      <QRCode value={`${window.location.origin}/music/share/${provider}/${id}`} />
+    </div>
+  </Modal>
+)}
     </div>
   );
 };
