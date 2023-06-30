@@ -9,7 +9,7 @@ import QRCode from 'qrcode.react';
 
 
 
-const PlaylistCard = ({ provider, accessToken, id, name, imageUrl, description }) => {
+const PlaylistCard = ({ provider, accessToken, id, name, imageUrl, description,username }) => {
   const [showModal, setShowModal] = useState(false);
   const [playlistItems, setPlaylistItems] = useState([]);
   const [anchorEl, setAnchorEl] = useState(null);
@@ -17,6 +17,8 @@ const PlaylistCard = ({ provider, accessToken, id, name, imageUrl, description }
   const [enteredUsername, setEnteredUsername] = useState('');
   const [enteredProvider, setEnteredProvider] = useState('');
   const [showQRCodeModal, setShowQRCodeModal] = useState(false);
+  const user_name = localStorage.getItem('user_name'); // Get the provider's access token from localStorage
+
 
   const fetchPlaylistItems = async () => {
     try {
@@ -185,7 +187,7 @@ const PlaylistCard = ({ provider, accessToken, id, name, imageUrl, description }
   <Modal onClose={() => setShowQRCodeModal(false)}>
     <div className="qr-code-modal">
       <h2>Share Playlist by QR Code</h2>
-      <QRCode value={`${window.location.origin}/music/share/${provider}/${id}`} />
+      <QRCode value={`${window.location.origin}/music/share/${provider}/${user_name}/${id}`} />
     </div>
   </Modal>
 )}

@@ -92,6 +92,7 @@ const UserPlaylists = ({ provider, username, playlistUpdated }) => {
                   : playlist.snippet.thumbnails.high.url
               }
               description={playlist.description}
+              username={username}
             />
             ))}
           </div>

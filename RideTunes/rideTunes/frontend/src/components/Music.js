@@ -44,17 +44,18 @@ const Music = () => {
   
   useEffect(() => {
     const token = getCookie('jwt');
-    const csrfToken = getCookie('csrfToken');
+    const csrftoken = getCookie('csrfToken');
     const provider = getCookie('provider');
     const accessToken = getCookie('access_token');
+    const user_name = getCookie('username');
   
     if (token) {
       localStorage.setItem('jwt', token);
     }
   
-    if (csrfToken) {
-      document.cookie = `csrftoken=${csrfToken}; path=/;`;
-    }
+    // if (csrftoken) {
+    //   document.cookie = `csrftoken=${csrftoken}; path=/;`;
+    // }
   
     if (provider) {
       localStorage.setItem('provider', provider);
@@ -63,12 +64,17 @@ const Music = () => {
     if (accessToken) {
       localStorage.setItem('access_token', accessToken);
     }
+
+    if (user_name) {
+      localStorage.setItem('user_name', user_name);
+    }
   
     // Clear cookies after storing values in local storage
     document.cookie = 'jwt=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
     document.cookie = 'csrfToken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
     document.cookie = 'provider=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
     document.cookie = 'access_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+    document.cookie = 'user_name=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
   }, []);
   
 

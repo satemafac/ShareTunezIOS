@@ -135,11 +135,13 @@ def after_auth(request):
     max_age = int(timedelta(days=14).total_seconds())  # 14 days
 
     response.set_cookie('jwt', jwt_access_token, max_age=max_age)
-    response.set_cookie('csrfToken', csrf_token, max_age=max_age)
+    # response.set_cookie('csrfToken', csrf_token, max_age=max_age)
     response.set_cookie('provider', provider, max_age=max_age)
     response.set_cookie('access_token', access_token, max_age=max_age)
+    response.set_cookie('username', request.user.username, max_age=max_age)  # Set the 'username' cookie
 
     return response
+
 
 def create_ytmusic_client(access_token):
     headers = {
@@ -497,6 +499,77 @@ def send_invite(request):
         return JsonResponse({'message': 'Playlist Invite sent!'})
     else:
         return JsonResponse({'error': 'Invalid request method'}, status=405)
+    
+
+from django.http import JsonResponse
+
+def fetch_playlist_info(request):
+
+    playlist_id = request.GET.get('playlist_id')
+    music_service = request.GET.get('provider')
+    username = request.GET.get('username')
+
+    if(music_service == 'spotify'):
+        music_service = 'Spotify'
+    elif(music_service == 'google-oauth2'):
+        music_service = 'YouTube'
+
+    user_profile = User.objects.filter(username=username, userprofile__music_service=music_service).first()
+    print(user_profile)
+
+    if not user_profile:
+        print(f'User with username {username} and music_service {music_service} not found')
+        return JsonResponse({}, status=404)
+
+    access_token = user_profile.userprofile.access_token
+
+    if music_service == 'Spotify':
+        headers = {'Authorization': f'Bearer {access_token}'}
+        response = requests.get(f'https://api.spotify.com/v1/playlists/{playlist_id}', headers=headers)
+
+        if response.status_code == 200:
+            playlist_data = response.json()
+            # Extract playlist info from the response
+            playlist = {
+                'id': playlist_data['id'], 
+                'name': playlist_data['name'], 
+                'description': playlist_data['description'],
+                'imageUrl': playlist_data['images'][0]['url'] if playlist_data['images'] else None
+            }
+            print(playlist)
+            return JsonResponse(playlist)
+        else:
+            print('Failed to fetch Spotify playlist info')
+            return JsonResponse({}, status=500)
+
+    elif music_service == 'YouTube':
+        credentials = Credentials(token=access_token)
+        youtube = build('youtube', 'v3', credentials=credentials, cache_discovery=False)
+
+        response = youtube.playlists().list(
+            part='snippet',
+            id=playlist_id
+        ).execute()
+
+        if 'items' in response and response['items']:
+            # Extract playlist info from the response
+            snippet = response['items'][0]['snippet']
+            playlist = {
+                'id': response['items'][0]['id'], 
+                'name': snippet['title'], 
+                'description': snippet['description'],
+                'imageUrl': snippet['thumbnails']['default']['url'] if snippet['thumbnails']['default'] else None
+            }
+            print(playlist)
+            return JsonResponse(playlist)
+        else:
+            print('Failed to fetch YouTube playlist info')
+            return JsonResponse({}, status=500)
+
+    else:
+        print(f'Music service {music_service} not supported')
+        return JsonResponse({}, status=400)
+
     
 
 def fetch_playlist_tracks(playlist_id, music_service, username):
