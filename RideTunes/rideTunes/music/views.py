@@ -8,6 +8,7 @@ from django.http import JsonResponse
 from django.middleware.csrf import get_token
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_http_methods
 from .models import SharedPlaylist, User, UserProfile,PlaylistInvite,Notification
 import os
 import requests
@@ -301,7 +302,7 @@ def create_shared_playlist(request):
             }
             payload = {
                 'name': playlist_name,
-                'description': 'Shared Playlist created by our app',
+                'description': 'Shared Playlist created by our ShareTunes',
                 'public': False,
             }
             response = requests.post('https://api.spotify.com/v1/me/playlists', headers=headers, json=payload)
@@ -335,7 +336,7 @@ def create_shared_playlist(request):
                 body = {
                     'snippet': {
                         'title': playlist_name,
-                        'description': 'Shared Playlist created by our app',
+                        'description': 'Shared Playlist created by ShareTunes',
                     },
                     'status': {
                         'privacyStatus': 'private',
@@ -501,8 +502,6 @@ def send_invite(request):
         return JsonResponse({'error': 'Invalid request method'}, status=405)
     
 
-from django.http import JsonResponse
-
 def fetch_playlist_info(request):
 
     playlist_id = request.GET.get('playlist_id')
@@ -515,7 +514,6 @@ def fetch_playlist_info(request):
         music_service = 'YouTube'
 
     user_profile = User.objects.filter(username=username, userprofile__music_service=music_service).first()
-    print(user_profile)
 
     if not user_profile:
         print(f'User with username {username} and music_service {music_service} not found')
@@ -534,7 +532,9 @@ def fetch_playlist_info(request):
                 'id': playlist_data['id'], 
                 'name': playlist_data['name'], 
                 'description': playlist_data['description'],
-                'imageUrl': playlist_data['images'][0]['url'] if playlist_data['images'] else None
+                'imageUrl': playlist_data['images'][0]['url'] if playlist_data['images'] else None,
+                'trackCount': playlist_data['tracks']['total'],
+                'tracks': [{'name': item['track']['name'], 'artist': item['track']['artists'][0]['name'], 'duration': item['track']['duration_ms']} for item in playlist_data['tracks']['items']]
             }
             print(playlist)
             return JsonResponse(playlist)
@@ -546,30 +546,40 @@ def fetch_playlist_info(request):
         credentials = Credentials(token=access_token)
         youtube = build('youtube', 'v3', credentials=credentials, cache_discovery=False)
 
-        response = youtube.playlists().list(
-            part='snippet',
-            id=playlist_id
-        ).execute()
+        try:
+            response = youtube.playlists().list(
+                part='snippet,contentDetails',
+                id=playlist_id
+            ).execute()
 
-        if 'items' in response and response['items']:
-            # Extract playlist info from the response
-            snippet = response['items'][0]['snippet']
-            playlist = {
-                'id': response['items'][0]['id'], 
-                'name': snippet['title'], 
-                'description': snippet['description'],
-                'imageUrl': snippet['thumbnails']['default']['url'] if snippet['thumbnails']['default'] else None
-            }
-            print(playlist)
-            return JsonResponse(playlist)
-        else:
-            print('Failed to fetch YouTube playlist info')
+            track_response = youtube.playlistItems().list(
+                part='snippet,contentDetails',
+                maxResults=50,
+                playlistId=playlist_id
+            ).execute()
+
+            if 'items' in response and response['items']:
+                # Extract playlist info from the response
+                snippet = response['items'][0]['snippet']
+                contentDetails = response['items'][0]['contentDetails']
+                playlist = {
+                    'id': response['items'][0]['id'], 
+                    'name': snippet['title'], 
+                    'description': snippet['description'],
+                    'imageUrl': snippet['thumbnails']['default']['url'] if snippet['thumbnails']['default'] else None,
+                    'trackCount': contentDetails['itemCount'],
+                    'tracks': [{'name': item['snippet']['title'], 'artist': item['snippet']['videoOwnerChannelTitle'].replace(' - Topic', ''), 'duration': 'N/A'} for item in track_response['items']]
+                }
+                return JsonResponse(playlist)
+            else:
+                print('Failed to fetch YouTube playlist info')
+                return JsonResponse({}, status=500)
+        except HttpError as e:
+            print(f'An HTTP error {e.resp.status} occurred: {e.content}')
             return JsonResponse({}, status=500)
-
     else:
         print(f'Music service {music_service} not supported')
         return JsonResponse({}, status=400)
-
     
 
 def fetch_playlist_tracks(playlist_id, music_service, username):
@@ -720,7 +730,7 @@ def accept_invite(request):
         sender_username = invite.sender.username
         receiver_username =  invite.receiver.username
         sender_service = invite.sender.userprofile.music_service
-        reciever_service = invite.receiver.userprofile.music_service
+        receiver_service = invite.receiver.userprofile.music_service
 
 
         invite.status = 'accepted'
@@ -736,11 +746,37 @@ def accept_invite(request):
         tracks = fetch_playlist_tracks(master_playlist_id, master_playlist_service, sender_username)
 
         # Create a new playlist in the receiver's music service and populate it with tracks
-        create_and_populate_playlist(tracks, receiver_username, reciever_service, invite.playlist.name)
+        create_and_populate_playlist(tracks, receiver_username, receiver_service, invite.playlist.name)
 
         return JsonResponse({'message': 'Invite accepted'})
     else:
         return JsonResponse({'error': 'Invalid request method'}, status=405)
+    
+@csrf_exempt
+@require_http_methods(["POST"])  # This decorator ensures the view only accepts POST requests
+def accept_invite_qr(request):
+    try:
+        data = json.loads(request.body)  # Load the data from the request body
+        master_playlist_id = data.get('master_playlist_id')
+        playlist_name = data.get('playlist_name')
+        master_playlist_service = data.get('master_playlist_service')
+        sender_username = data.get('sender_username')
+        receiver_username = data.get('receiver_username')
+        receiver_service = data.get('receiver_service')
+
+        # Fetch the tracks from the master playlist
+        tracks = fetch_playlist_tracks(master_playlist_id, master_playlist_service, sender_username)
+
+        # Create a new playlist in the receiver's music service and populate it with tracks
+        create_and_populate_playlist(tracks, receiver_username, receiver_service, playlist_name)
+
+        # Return success message
+        return JsonResponse({"message": "Playlist successfully created and populated with tracks!"}, status=200)
+
+    except Exception as e:
+        # Return error message
+        return JsonResponse({"error": str(e)}, status=400)
+
 
 
 # This function will add a user to a shared playlist
