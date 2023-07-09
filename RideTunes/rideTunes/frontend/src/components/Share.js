@@ -20,7 +20,8 @@ const PlaylistContainer = styled.div`
   align-items: center;
   justify-content: center;
   height: 100vh;
-  background: linear-gradient(to right, #f5f5f5, #3f51b5);
+  background: ${({ imageUrl }) => `linear-gradient(rgba(255, 255, 255, 0), rgba(255, 255, 255, 1)), url(${imageUrl}) no-repeat center`};
+  background-size: cover;
 `;
 
 const PlaylistImage = styled.img`
@@ -108,6 +109,12 @@ const TrackDuration = styled.span`
   text-align: right; // Align the text to the right
 `;
 
+const ProviderLogo = styled.img`
+  width: 24px;
+  height: 24px;
+  margin-left: 5px;
+`;
+
 
 
 function formatDuration(ms) {
@@ -116,6 +123,18 @@ function formatDuration(ms) {
     const seconds = totalSeconds % 60;
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   }
+
+  function getProviderLogo(provider) {
+    switch (provider) {
+      case 'Spotify':
+        return '/spotify-logo.png';
+      case 'YouTube':
+        return '/youtube-logo.png';
+      default:
+        return '/default-logo.png';
+    }
+  }
+  
   
 
 function Share() {
@@ -213,7 +232,7 @@ function Share() {
 
   return (
     <ProtectedComponent>
-      <PlaylistContainer>
+      <PlaylistContainer imageUrl={playlistInfo ? playlistInfo.imageUrl : null}>
         {playlistInfo && (
           <>
             <PlaylistImage src={playlistInfo.imageUrl} alt="Playlist" />
@@ -237,7 +256,10 @@ function Share() {
                 </TrackList>
                 )}
             <PlaylistDescription>{playlistInfo.description}</PlaylistDescription>
-            <SharedBy>Shared by: {username} ({provider})</SharedBy>
+            <SharedBy>
+            Shared by: {username} 
+            <ProviderLogo src={getProviderLogo(provider)} alt={provider} />
+            </SharedBy>
             <AddButton onClick={handleAdd}>Add to Playlist</AddButton>
             <CancelButton onClick={handleCancel}>Cancel</CancelButton>
           </>

@@ -233,7 +233,7 @@ REST_FRAMEWORK = {
 
 SOCIAL_AUTH_SPOTIFY_KEY = os.environ.get('SPOTIFY_KEY')
 SOCIAL_AUTH_SPOTIFY_SECRET = os.environ.get('SPOTIFY_SECRET')
-SOCIAL_AUTH_SPOTIFY_SCOPE = ['playlist-modify-public', 'playlist-modify-private','playlist-read-private','user-read-playback-state'] # Add this line
+SOCIAL_AUTH_SPOTIFY_SCOPE = ['playlist-modify-public', 'playlist-modify-private','playlist-read-private','user-read-playback-state','user-library-read'] # Add this line
 SOCIAL_AUTH_APPLE_KEY = 'your-apple-client-id'
 SOCIAL_AUTH_APPLE_SECRET = 'your-apple-client-secret'
 SOCIAL_AUTH_APPLE_SCOPE = ['name', 'email']

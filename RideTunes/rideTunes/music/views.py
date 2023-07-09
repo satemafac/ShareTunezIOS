@@ -26,7 +26,8 @@ from django.contrib.auth.decorators import login_required
 from social_django.models import UserSocialAuth
 import traceback
 from ytmusicapi import YTMusic
-import re
+from django.contrib.staticfiles.storage import staticfiles_storage
+
 
 
 SPOTIFY_KEY = os.environ.get("SPOTIFY_KEY")
@@ -181,6 +182,12 @@ def user_playlists(request):
         if response.status_code == 200:
             data = response.json()
             playlists = data.get('items')
+            playlists.append({
+                'id': 'liked_songs',
+                'name': 'Liked Songs',
+                'images': [{'url': request.build_absolute_uri(staticfiles_storage.url('spotify-liked-songs.jpg'))}],
+                'description': '',
+            })
             return JsonResponse({'playlists': playlists})
         else:
             return JsonResponse({'error': 'Failed to fetch Spotify user playlists'}, status=500)
@@ -224,14 +231,24 @@ def user_playlists(request):
                 if are_videos_music(video_ids, youtube):
                     print(playlist)
                     music_playlists.append(playlist)
-
+                        # Add a default "Liked Music" playlist
+            music_playlists.append({
+                'id': 'liked_music',
+                'snippet': {
+                    'title': 'Liked Music',
+                    'thumbnails': {
+                        'high': {'url': request.build_absolute_uri(staticfiles_storage.url('youtube-liked-music.png'))},
+                    },
+                },
+                'description': '',
+            })
             return JsonResponse({'playlists': music_playlists})
         except Exception as e:
             traceback.print_exc()  # Add this line to print the traceback in the console
             return JsonResponse({'error': f'Failed to fetch YouTube user playlists: {str(e)}'}, status=500)
     else:
         return JsonResponse({'error': f'Provider {provider} not supported'}, status=400)
-    
+ 
     
 def fetch_playlist_items(request):
     provider = request.GET.get('provider')
@@ -242,7 +259,13 @@ def fetch_playlist_items(request):
         headers = {
             'Authorization': f'Bearer {access_token}',
         }
-        response = requests.get(f'https://api.spotify.com/v1/playlists/{playlist_id}/tracks', headers=headers)
+
+        # Check if the playlist_id is 'liked_songs'
+        if playlist_id == 'liked_songs':
+            response = requests.get(f'https://api.spotify.com/v1/me/tracks', headers=headers)
+        else:
+            response = requests.get(f'https://api.spotify.com/v1/playlists/{playlist_id}/tracks', headers=headers)
+
 
         if response.status_code == 200:
             data = response.json()
@@ -250,10 +273,14 @@ def fetch_playlist_items(request):
             return JsonResponse({'playlist_items': playlist_items})
         else:
             return JsonResponse({'error': 'Failed to fetch Spotify playlist items'}, status=500)
+
     elif provider == 'google-oauth2':
         try:
             credentials = Credentials(token=access_token)
             youtube = build('youtube', 'v3', credentials=credentials)
+
+            # Fetch from LM playlist if playlist_id is 'Liked Music'
+            playlist_id = 'LM' if playlist_id == 'liked_music' else playlist_id  
 
             response = youtube.playlistItems().list(
                 part='snippet',
@@ -262,13 +289,15 @@ def fetch_playlist_items(request):
             ).execute()
 
             playlist_items = response.get('items')
-            print(playlist_items)
             return JsonResponse({'playlist_items': playlist_items})
+
         except Exception as e:
             traceback.print_exc()
             return JsonResponse({'error': f'Failed to fetch YouTube playlist items: {str(e)}'}, status=500)
+
     else:
         return JsonResponse({'error': f'Provider {provider} not supported'}, status=400)
+
 
 
 def revoke_access_token(provider, access_token):
@@ -523,28 +552,47 @@ def fetch_playlist_info(request):
 
     if music_service == 'Spotify':
         headers = {'Authorization': f'Bearer {access_token}'}
-        response = requests.get(f'https://api.spotify.com/v1/playlists/{playlist_id}', headers=headers)
+        # response = requests.get(f'https://api.spotify.com/v1/playlists/{playlist_id}', headers=headers)
+
+        # Check if the playlist_id is 'liked_songs'
+        if playlist_id == 'liked_songs':
+            response = requests.get(f'https://api.spotify.com/v1/me/tracks', headers=headers)
+        else:
+            response = requests.get(f'https://api.spotify.com/v1/playlists/{playlist_id}', headers=headers)
 
         if response.status_code == 200:
             playlist_data = response.json()
-            # Extract playlist info from the response
-            playlist = {
-                'id': playlist_data['id'], 
-                'name': playlist_data['name'], 
-                'description': playlist_data['description'],
-                'imageUrl': playlist_data['images'][0]['url'] if playlist_data['images'] else None,
-                'trackCount': playlist_data['tracks']['total'],
-                'tracks': [{'name': item['track']['name'], 'artist': item['track']['artists'][0]['name'], 'duration': item['track']['duration_ms']} for item in playlist_data['tracks']['items']]
-            }
-            print(playlist)
+
+            if playlist_id == 'liked_songs':
+                playlist = {
+                    'id': 'liked_songs', 
+                    'name': 'Liked Songs',
+                    'description': 'Your liked songs',
+                    'imageUrl': request.build_absolute_uri(staticfiles_storage.url('spotify-liked-songs.jpg')),
+                    'trackCount': len(playlist_data['items']),
+                    'tracks': [{'name': item['track']['name'], 'artist': item['track']['artists'][0]['name'], 'duration': item['track']['duration_ms']} for item in playlist_data['items']]
+                }
+            else:
+                playlist = {
+                    'id': playlist_data['id'], 
+                    'name': playlist_data['name'], 
+                    'description': playlist_data['description'],
+                    'imageUrl': playlist_data['images'][0]['url'] if playlist_data['images'] else None,
+                    'trackCount': playlist_data['tracks']['total'],
+                    'tracks': [{'name': item['track']['name'], 'artist': item['track']['artists'][0]['name'], 'duration': item['track']['duration_ms']} for item in playlist_data['tracks']['items']]
+                }
+
             return JsonResponse(playlist)
         else:
             print('Failed to fetch Spotify playlist info')
             return JsonResponse({}, status=500)
 
+
     elif music_service == 'YouTube':
         credentials = Credentials(token=access_token)
         youtube = build('youtube', 'v3', credentials=credentials, cache_discovery=False)
+        playlist_id = 'LM' if playlist_id == 'liked_music' else playlist_id  
+
 
         try:
             response = youtube.playlists().list(
@@ -562,14 +610,24 @@ def fetch_playlist_info(request):
                 # Extract playlist info from the response
                 snippet = response['items'][0]['snippet']
                 contentDetails = response['items'][0]['contentDetails']
-                playlist = {
-                    'id': response['items'][0]['id'], 
-                    'name': snippet['title'], 
-                    'description': snippet['description'],
-                    'imageUrl': snippet['thumbnails']['default']['url'] if snippet['thumbnails']['default'] else None,
-                    'trackCount': contentDetails['itemCount'],
-                    'tracks': [{'name': item['snippet']['title'], 'artist': item['snippet']['videoOwnerChannelTitle'].replace(' - Topic', ''), 'duration': 'N/A'} for item in track_response['items']]
-                }
+                if playlist_id == 'LM':
+                    playlist = {
+                        'id': response['items'][0]['id'], 
+                        'name': snippet['title'], 
+                        'description': snippet['description'],
+                        'imageUrl': request.build_absolute_uri(staticfiles_storage.url('youtube-liked-music.png')),
+                        'trackCount': contentDetails['itemCount'],
+                        'tracks': [{'name': item['snippet']['title'], 'artist': item['snippet']['videoOwnerChannelTitle'].replace(' - Topic', ''), 'duration': 'N/A'} for item in track_response['items']]
+                    }
+                else:
+                    playlist = {
+                        'id': response['items'][0]['id'], 
+                        'name': snippet['title'], 
+                        'description': snippet['description'],
+                        'imageUrl': snippet['thumbnails']['high']['url'] if snippet['thumbnails']['high'] else None,
+                        'trackCount': contentDetails['itemCount'],
+                        'tracks': [{'name': item['snippet']['title'], 'artist': item['snippet']['videoOwnerChannelTitle'].replace(' - Topic', ''), 'duration': 'N/A'} for item in track_response['items']]
+                    }
                 return JsonResponse(playlist)
             else:
                 print('Failed to fetch YouTube playlist info')
@@ -593,7 +651,12 @@ def fetch_playlist_tracks(playlist_id, music_service, username):
 
     if music_service == 'Spotify':
         headers = {'Authorization': f'Bearer {access_token}'}
-        response = requests.get(f'https://api.spotify.com/v1/playlists/{playlist_id}/tracks', headers=headers)
+
+        # Check if the playlist_id is 'liked_songs'
+        if playlist_id == 'liked_songs':
+            response = requests.get(f'https://api.spotify.com/v1/me/tracks', headers=headers)
+        else:
+            response = requests.get(f'https://api.spotify.com/v1/playlists/{playlist_id}/tracks', headers=headers)
 
         if response.status_code == 200:
             track_data = response.json()
@@ -611,11 +674,15 @@ def fetch_playlist_tracks(playlist_id, music_service, username):
         credentials = Credentials(token=access_token)
         youtube = build('youtube', 'v3', credentials=credentials, cache_discovery=False)
 
+        # Fetch from LM playlist if playlist_id is 'Liked Music'
+        playlist_id = 'LM' if playlist_id == 'liked_music' else playlist_id  
+
         response = youtube.playlistItems().list(
             part='snippet',
             maxResults=50,
             playlistId=playlist_id
         ).execute()
+
 
         if 'items' in response:
             # Extract video info from the response

@@ -75,8 +75,8 @@ const UserPlaylists = ({ provider, username, playlistUpdated }) => {
           </div>
         ) : (
           <div className="playlists-grid">
-            {playlists.map((playlist) => (
-              <PlaylistCard
+          {playlists.map((playlist) => (
+            <PlaylistCard
               key={playlist.id}
               id={playlist.id}
               provider={provider}
@@ -84,18 +84,23 @@ const UserPlaylists = ({ provider, username, playlistUpdated }) => {
               name={
                 provider === 'spotify'
                   ? playlist.name
-                  : playlist.snippet.title
+                  : playlist.snippet?.title
               }
               imageUrl={
                 provider === 'spotify'
-                  ? playlist.images[0]?.url
-                  : playlist.snippet.thumbnails.high.url
+                  ? playlist.images?.[0]?.url
+                  : playlist.snippet?.thumbnails?.high?.url
               }
               description={playlist.description}
               username={username}
+              // onClick={
+              //   playlist.id === 'liked_songs' || playlist.id === 'liked_music'
+              //     ? () => handleSpecialPlaylistClick(playlist.id)
+              //     : null
+              // }
             />
-            ))}
-          </div>
+          ))}
+        </div>
         )}
       </div>
     </div>
