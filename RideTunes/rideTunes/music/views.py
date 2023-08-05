@@ -27,8 +27,12 @@ from social_django.models import UserSocialAuth
 import traceback
 from ytmusicapi import YTMusic
 from django.contrib.staticfiles.storage import staticfiles_storage
+from channels.layers import get_channel_layer
+from asgiref.sync import async_to_sync
+from django.http import HttpResponseForbidden
 
-
+import sys
+print(sys.path)
 
 SPOTIFY_KEY = os.environ.get("SPOTIFY_KEY")
 SPOTIFY_SECRET = os.environ.get("SPOTIFY_SECRET")
@@ -49,7 +53,17 @@ def login(request):
 
     return render(request, 'login.html', context)
 
-from django.http import HttpResponseForbidden
+
+def app_login(request):
+    spotify_auth_url = reverse('social:begin', args=['spotify'])
+    apple_auth_url = reverse('social:begin', args=['apple'])
+    google_auth_url = reverse('social:begin', args=['google-oauth2'])
+
+    return JsonResponse({
+        'spotify_auth_url': spotify_auth_url,
+        'apple_auth_url': apple_auth_url,
+        'google_auth_url': google_auth_url,
+    })
 
 def check_auth(request):
     print("User is authenticated:", request.user.is_authenticated)
@@ -105,6 +119,21 @@ def get_user_profile(request):
         except Exception as e:
             traceback.print_exc()  # Add this line to print the traceback in the console
             return JsonResponse({'error': f'Failed to fetch user profile: {str(e)}'}, status=500)
+        
+
+
+def update_playlist(request):
+    # Update your playlist...
+
+    # Notify all users in the playlist
+    channel_layer = get_channel_layer()
+    async_to_sync(channel_layer.group_send)(
+        'playlist',  # This will match the room_name in your consumer
+        {
+            'type': 'playlist.update',  # This matches the method name in your consumer
+            'content': 'Playlist updated',
+        }
+    )
 
 
 @ensure_csrf_cookie
@@ -223,7 +252,7 @@ def user_playlists(request):
                 videos_response = youtube.playlistItems().list(
                     part="snippet",
                     playlistId=playlist_id,
-                    maxResults=5
+                    maxResults=3
                 ).execute()
 
                 # Check if all of the first 5 videos in the playlist belong to the "Music" category
@@ -648,58 +677,76 @@ def fetch_playlist_tracks(playlist_id, music_service, username):
         return []
 
     access_token = user_profile.userprofile.access_token
+    tracks = []
 
     if music_service == 'Spotify':
         headers = {'Authorization': f'Bearer {access_token}'}
+        offset = 0
+        limit = 50
 
-        # Check if the playlist_id is 'liked_songs'
-        if playlist_id == 'liked_songs':
-            response = requests.get(f'https://api.spotify.com/v1/me/tracks', headers=headers)
-        else:
-            response = requests.get(f'https://api.spotify.com/v1/playlists/{playlist_id}/tracks', headers=headers)
+        while True:
+            if playlist_id == 'liked_songs':
+                if offset == 0:  # For the first request
+                    response = requests.get('https://api.spotify.com/v1/me/tracks', headers=headers)
+                else:  # For subsequent requests, use the 'next' field from the previous response
+                    response = requests.get(next_page_url, headers=headers)
+            else:
+                if offset == 0:  # For the first request
+                    response = requests.get(f'https://api.spotify.com/v1/playlists/{playlist_id}/tracks?limit={limit}&offset={offset}', headers=headers)
+                else:  # For subsequent requests, use the 'next' field from the previous response
+                    response = requests.get(next_page_url, headers=headers)
 
-        if response.status_code == 200:
-            track_data = response.json()
-            # Extract track info from the response
-            tracks = [{'id': item['track']['id'], 
-                       'name': item['track']['name'], 
-                       'artist': item['track']['artists'][0]['name']} for item in track_data['items']]
-            print(tracks)
-            return tracks
-        else:
-            print('Failed to fetch Spotify playlist tracks')
-            return []
+            if response.status_code == 200:
+                track_data = response.json()
+                track_items = [{'id': item['track']['id'], 
+                           'name': item['track']['name'], 
+                           'artist': item['track']['artists'][0]['name']} for item in track_data['items']]
+                tracks.extend(track_items)
+
+                next_page_url = track_data.get('next')
+                if not next_page_url:
+                    break
+
+                offset += limit
+            else:
+                print('Failed to fetch Spotify playlist tracks')
+                print(f'Status Code: {response.status_code}')
+                print(f'Response Content: {response.content}')
+                break
 
     elif music_service == 'YouTube':
         credentials = Credentials(token=access_token)
         youtube = build('youtube', 'v3', credentials=credentials, cache_discovery=False)
+        nextPageToken = None
 
-        # Fetch from LM playlist if playlist_id is 'Liked Music'
-        playlist_id = 'LM' if playlist_id == 'liked_music' else playlist_id  
+        while True:
+            response = youtube.playlistItems().list(
+                part='snippet',
+                maxResults=50,
+                playlistId=playlist_id,
+                pageToken=nextPageToken
+            ).execute()
 
-        response = youtube.playlistItems().list(
-            part='snippet',
-            maxResults=50,
-            playlistId=playlist_id
-        ).execute()
+            if 'items' in response:
+                video_items = [{'id': item['snippet']['resourceId']['videoId'], 
+                           'name': item['snippet']['title'], 
+                           'artist': item['snippet']['videoOwnerChannelTitle']} for item in response['items']]
+                tracks.extend(video_items)
 
-
-        if 'items' in response:
-            # Extract video info from the response
-            videos = [{'id': item['snippet']['resourceId']['videoId'], 
-                       'name': item['snippet']['title'], 
-                       'artist': item['snippet']['videoOwnerChannelTitle']} for item in response['items']]
-            print(videos)
-            return videos
-        else:
-            print('Failed to fetch YouTube playlist tracks')
-            return []
+                nextPageToken = response.get('nextPageToken')
+                if not nextPageToken:
+                    break
+            else:
+                print('Failed to fetch YouTube playlist tracks')
+                break
 
     else:
         print(f'Music service {music_service} not supported')
-        return []
+
+    return tracks
+
  
-def create_and_populate_playlist(tracks, username, music_service, playlist_name):
+def create_and_populate_playlist(tracks, username, music_service, playlist_name,master_playlist_service):
     user_profile = UserProfile.objects.get(user__username=username, music_service=music_service)
     access_token = user_profile.access_token
 
@@ -707,7 +754,7 @@ def create_and_populate_playlist(tracks, username, music_service, playlist_name)
         headers = {'Authorization': f'Bearer {access_token}'}
         data = {
             'name': playlist_name,
-            'description': 'This playlist was shared via MusicShare!',
+            'description': 'This playlist was shared via ShareTunes!',
             'public': False
         }
         response = requests.post(f'https://api.spotify.com/v1/users/{username}/playlists', headers=headers, json=data)
@@ -716,17 +763,30 @@ def create_and_populate_playlist(tracks, username, music_service, playlist_name)
             playlist_data = response.json()
             new_playlist_id = playlist_data['id']
 
-            # Populate the new playlist with tracks
-            for track in tracks:
-                # Search for the track by name and artist
-                search_query = f"{track['name']} {track['artist']}"
-                response = requests.get(f"https://api.spotify.com/v1/search?q={search_query}&type=track&limit=1", headers=headers)
-                if response.status_code == 200:
-                    search_results = response.json()
-                    if search_results['tracks']['items']:
-                        track_id = search_results['tracks']['items'][0]['id']
-                        # Add the track to the new playlist
-                        requests.post(f"https://api.spotify.com/v1/playlists/{new_playlist_id}/tracks", headers=headers, json={'uris': [f"spotify:track:{track_id}"]})
+            # Collect the track URIs
+            track_uris = []
+
+            # If track IDs are consistent and the first track ID belongs to Spotify, simply append the URI for all tracks
+            print("TRACKS ARE",tracks)
+            print(master_playlist_service)
+            if master_playlist_service == "Spotify":
+                print('YES SPOTIFY')
+                track_uris = [f"spotify:track:{track['id']}" for track in tracks]
+            else:
+                # Otherwise, search for each track by name and artist
+                for track in tracks:
+                    search_query = f"{track['name']} {track['artist']}"
+                    response = requests.get(f"https://api.spotify.com/v1/search?q={search_query}&type=track&limit=1", headers=headers)
+                    if response.status_code == 200:
+                        search_results = response.json()
+                        if search_results['tracks']['items']:
+                            track_id = search_results['tracks']['items'][0]['id']
+                            track_uris.append(f"spotify:track:{track_id}")
+
+            # Add the tracks to the new playlist in chunks of 100
+            for i in range(0, len(track_uris), 100):
+                chunk = track_uris[i:i+100]
+                requests.post(f"https://api.spotify.com/v1/playlists/{new_playlist_id}/tracks", headers=headers, json={'uris': chunk})
 
         else:
             print('Failed to create Spotify playlist')
@@ -739,7 +799,7 @@ def create_and_populate_playlist(tracks, username, music_service, playlist_name)
         data = {
             'snippet': {
                 'title': playlist_name,
-                'description': 'This playlist was shared via MusicShare!'
+                'description': 'This playlist was shared via ShareTunes!'
             },
             'status': {
                 'privacyStatus': 'private'
@@ -833,9 +893,9 @@ def accept_invite_qr(request):
 
         # Fetch the tracks from the master playlist
         tracks = fetch_playlist_tracks(master_playlist_id, master_playlist_service, sender_username)
-
+        print(tracks)
         # Create a new playlist in the receiver's music service and populate it with tracks
-        create_and_populate_playlist(tracks, receiver_username, receiver_service, playlist_name)
+        create_and_populate_playlist(tracks, receiver_username, receiver_service, playlist_name,master_playlist_service)
 
         # Return success message
         return JsonResponse({"message": "Playlist successfully created and populated with tracks!"}, status=200)
@@ -883,6 +943,55 @@ def decline_invite(request):
 
     else:
         return JsonResponse({'error': 'Invalid request method'}, status=405)
+  
+def delete_playlist(request):
+    try:
+        data = json.loads(request.body)
+        playlist_id = data.get('playlist_id')
+        username = data.get('username')
+        music_service = data.get('provider')
+        if(music_service == 'spotify'):
+            music_service = 'Spotify'
+        elif(music_service == 'google-oauth2'):
+            music_service = 'YouTube'
+
+        user_profile = User.objects.filter(username=username, userprofile__music_service=music_service).first()
+
+        if not user_profile:
+            print(f'User with username {username} and music_service {music_service} not found')
+            return JsonResponse({"error": f'User with username {username} and music_service {music_service} not found'}, status=400)
+
+        access_token = user_profile.userprofile.access_token
+
+        if music_service == 'Spotify':
+            headers = {'Authorization': f'Bearer {access_token}'}
+            response = requests.delete(f'https://api.spotify.com/v1/playlists/{playlist_id}/followers', headers=headers)
+            print(response)
+
+            if response.status_code == 200:
+                print(f'Successfully unfollowed Spotify playlist {playlist_id}')
+                return JsonResponse({'message': 'Playlist Deleted'})
+            else:
+                print('Failed to unfollow Spotify playlist')
+                return JsonResponse({'error': 'Error Deleting'},status=400)
+            
+        elif music_service == 'YouTube':
+            credentials = Credentials(token=access_token)
+            youtube = build('youtube', 'v3', credentials=credentials, cache_discovery=False)
+
+            youtube.playlists().delete(id=playlist_id).execute()
+
+            print(f'Successfully deleted YouTube playlist {playlist_id}')
+            return JsonResponse({'message': 'Playlist Deleted'})
+
+        else:
+            print(f'Music service {music_service} not supported')
+            return JsonResponse({'error': f'Music service {music_service} not supported'}, status=400)
+    except Exception as e:
+        # Return error message
+        return JsonResponse({"error": str(e)}, status=400)
+
+
     
 def available_devices(request):
     try:

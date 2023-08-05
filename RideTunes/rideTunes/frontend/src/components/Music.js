@@ -34,6 +34,7 @@ const Music = () => {
   const [notifications, setNotifications] = useState([]);
   const [isNotificationModalOpen, setNotificationModalOpen] = useState(false);
   const [isAcceptingInvite, setIsAcceptingInvite] = useState(false);
+  const socket = new WebSocket('ws://localhost:8000/ws/playlist/');
 
 
   const handleChange = (event, newValue) => {
@@ -174,6 +175,14 @@ const Music = () => {
     fetchNotifications();
   }, [isNotificationModalOpen, setPlaylistUpdated]);
   
+  socket.onmessage = function(e) {
+    const data = JSON.parse(e.data);
+    console.log(data.message);
+};
+
+socket.onclose = function(e) {
+    console.error('Chat socket closed unexpectedly');
+};
   
   const acceptInvite = async (notificationId) => {
     setIsAcceptingInvite(true);

@@ -33,7 +33,7 @@ SECRET_KEY = 'django-insecure-)vrph=*00771b505gcj@s@nm^%0==dm18l0fz0!3!f1h*n4(9w
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', '192.168.86.28']
 
 
 # Application definition
@@ -48,8 +48,17 @@ INSTALLED_APPS = [
     'rest_framework',
     'corsheaders',
     'social_django',
-    'music'
+    'music',
+    'channels',
 ]
+
+ASGI_APPLICATION = 'rideTunes.routing.application'
+
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels.layers.InMemoryChannelLayer'
+    }
+}
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -241,8 +250,6 @@ SOCIAL_AUTH_APPLE_TEAM = 'your-team-id'
 SOCIAL_AUTH_GOOGLE_OAUTH2_KEY = os.environ.get('GOOGLE_KEY')
 SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET = os.environ.get('GOOGLE_SECRET')
 SOCIAL_AUTH_LOGIN_REDIRECT_URL = '/music/after-auth/'
-
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', '192.168.86.28']
 
 SOCIAL_AUTH_GOOGLE_OAUTH2_SCOPE = [
     'openid',

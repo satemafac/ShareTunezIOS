@@ -3,6 +3,7 @@ import './PlaylistCard.css';
 import Modal from './Modal';
 import './PlaylistItems.css';
 import GroupAddIcon from '@mui/icons-material/GroupAdd'; // Add this import
+import DeleteIcon from '@mui/icons-material/Delete';
 import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
 import QRCode from 'qrcode.react';
@@ -73,7 +74,46 @@ const PlaylistCard = ({ provider, accessToken, id, name, imageUrl, description,u
     setEnteredProvider('');
     setShowShareByUsernameModal(false);
   };
+
+  const deletePlaylist = async () => {
+    if (window.confirm("Are you sure you want to delete this playlist?")) {
+        try {
+            const csrfToken = document.cookie
+                .split('; ')
+                .find(row => row.startsWith('csrftoken='))
+                .split('=')[1];
+                
+            const response = await fetch(
+                `${process.env.REACT_APP_BACKEND_URL}/music/api/delete_playlist/`,
+                {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        provider: provider,
+                        username: user_name,
+                        playlist_id: id,
+                    })
+                }
+            );
   
+            if (!response.ok) {
+                throw new Error(`Error deleting playlist: ${response.statusText}`);
+            }
+  
+            alert('Playlist deleted successfully!');
+            window.location.reload();  // Add this line to refresh the page
+        } catch (error) {
+            alert(`Error deleting playlist: ${error}`);
+        }
+    }
+  };
+  
+  
+
   const handleShareByQRCode = () => {
     handleMenuClose();
     setShowQRCodeModal(true); // Show the QR code modal
@@ -155,6 +195,14 @@ const PlaylistCard = ({ provider, accessToken, id, name, imageUrl, description,u
             })}
           </div>
           </div>
+          <div className="modal-footer">
+          <button 
+            className="delete-button"
+            onClick={deletePlaylist}
+          >
+              <DeleteIcon color="error" />
+          </button>
+        </div>
         </Modal>
       )}
   {showShareByUsernameModal && (

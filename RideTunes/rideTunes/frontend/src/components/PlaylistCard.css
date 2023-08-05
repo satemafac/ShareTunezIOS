@@ -111,3 +111,22 @@
   font-size: 14px;
 }
 
+.delete-button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  position: absolute;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+
+.modal-header-icon {
+  cursor: pointer; /* To show it's clickable */
+}
+
+
+
+
+

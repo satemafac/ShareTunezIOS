@@ -3,6 +3,8 @@ import { useParams } from 'react-router-dom';
 import { useNavigate } from 'react-router-dom';  // Replace useHistory with useNavigate in your imports.
 import ProtectedComponent from './ProtectedComponent';
 import styled, { keyframes, css } from 'styled-components';
+import CircularProgress from '@mui/material/CircularProgress';
+
 
 // Keyframes for the scrolling text animation
 const scroll = keyframes`
@@ -143,6 +145,8 @@ function Share() {
   const [playlistInfo, setPlaylistInfo] = useState(null);
   const [showTracks, setShowTracks] = useState(false);
   const navigate = useNavigate();  // Use useNavigate instead of useHistory.
+  const [isLoading, setIsLoading] = useState(false);  // <-- Add this loading state
+
 
   const fetchPlaylistInfo = async () => {
     try {
@@ -184,6 +188,7 @@ function Share() {
   }
 
   const acceptInviteQr = async () => {
+    setIsLoading(true);  // <-- Start loading when the async operation starts
     const receiverUsername = localStorage.getItem('user_name');
     let receiverService = localStorage.getItem('provider');
     receiverService = receiverService === 'spotify' ? 'Spotify' : receiverService === 'google-oauth2' ? 'YouTube' : receiverService;
@@ -208,8 +213,14 @@ function Share() {
             credentials: 'include',
         });
 
+        const data = await response.json();
+
         if (response.ok) {
-            navigate('/music');  // redirect user to success page
+            setIsLoading(false);  // <-- End loading when the async operation ends
+            // Only navigate when the response is successful and the data contains the expected success message
+            if (data.message === "Playlist successfully created and populated with tracks!") {
+                // navigate('/music');  // redirect user to success page
+            }
         } else {
             console.error(`Error accepting invite: ${response.statusText}`);
         }
@@ -217,6 +228,7 @@ function Share() {
         console.error(`Error accepting invite: ${error}`);
     }
 };
+
 
   const handleAdd = () => {
     acceptInviteQr();
@@ -242,6 +254,7 @@ function Share() {
                 ☰
               </TrackListButton>
             </PlaylistTitle>
+            
             {showTracks && (
                 <TrackList>
                     {playlistInfo.tracks.map((track, index) => (
@@ -260,9 +273,15 @@ function Share() {
             Shared by: {username} 
             <ProviderLogo src={getProviderLogo(provider)} alt={provider} />
             </SharedBy>
-            <AddButton onClick={handleAdd}>Add to Playlist</AddButton>
-            <CancelButton onClick={handleCancel}>Cancel</CancelButton>
-          </>
+            {isLoading ? (  // <-- Conditionally render the CircularProgress component
+              <CircularProgress />
+            ) : (
+              <>
+                <AddButton onClick={handleAdd}>Add to Playlist</AddButton>
+                <CancelButton onClick={handleCancel}>Cancel</CancelButton>
+              </>
+            )}
+            </>
         )}
       </PlaylistContainer>
     </ProtectedComponent>

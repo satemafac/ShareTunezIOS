@@ -6,6 +6,7 @@ from django.contrib.auth import views as auth_views
 urlpatterns = [
     # ...
     path('login/', views.login, name='login'),
+    path('app_login/', views.app_login, name='app_login'),
     path('auth/', include('social_django.urls', namespace='social')),
     path('logout/', views.logout_view, name='logout_view'),
     path('after-auth/', views.after_auth, name='after-auth'),
@@ -20,6 +21,7 @@ urlpatterns = [
     path('api/accept_invite/', views.accept_invite, name='accept_invite'),
     path('api/accept_invite_qr/', views.accept_invite_qr, name='accept_invite_qr'),
     path('api/decline_invite/', views.decline_invite, name='decline_invite'),
+    path('api/delete_playlist/', views.delete_playlist, name='delete_playlist'),
     path('api/available_devices/', views.available_devices, name='available_devices'),
     path('api/fetch_notifications/', views.fetch_notifications, name='fetch_notifications'),
 
