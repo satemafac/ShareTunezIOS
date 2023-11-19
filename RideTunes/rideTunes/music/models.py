@@ -3,6 +3,9 @@ from django.db import models
 from django.contrib.auth.models import User
 from django.db.models.signals import post_save
 from django.dispatch import receiver
+from datetime import timedelta
+from django.utils import timezone
+
 
 class UserProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='userprofile')
@@ -12,6 +15,23 @@ class UserProfile(models.Model):
 
     def __str__(self):
         return self.user.username
+    
+def get_expiry_time():
+    return timezone.now() + timedelta(minutes=5)
+    
+class OneTimeCode(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='otcs')
+    code = models.CharField(max_length=64, unique=True)
+    jwt_access_token = models.TextField()
+    jwt_refresh_token = models.TextField()
+    access_token = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField(default=get_expiry_time)
+
+    
+    def is_valid(self):
+        return timezone.now() < self.expires_at
+
     
     
 class SharedPlaylist(models.Model):

@@ -1,0 +1,26 @@
+steps:
+  # Pull the previous backend image for caching
+  - name: 'gcr.io/cloud-builders/docker'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        docker pull gcr.io/$PROJECT_ID/sharetunezios-backend:latest || exit 0
+
+  # Build the backend image with caching
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '--cache-from'
+      - 'gcr.io/$PROJECT_ID/sharetunezios-backend:latest'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/sharetunezios-backend:latest'
+      - '-f'
+      - 'Dockerfile.backend'
+      - '.'
+
+  # Push the backend image to GCR
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - 'gcr.io/$PROJECT_ID/sharetunezios-backend:latest'

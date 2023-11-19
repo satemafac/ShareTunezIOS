@@ -1,8 +1,9 @@
 # We'll use a multi-stage build process. Starting with Python base image for Django
-FROM python:3.8-slim-buster as backend
+FROM python:3.9-slim-buster as backend
 WORKDIR /app/backend
 COPY /requirements.txt .
 RUN apt-get update && apt-get install -y gcc
+RUN pip install --upgrade pip
 RUN pip install -r requirements.txt
 COPY RideTunes/rideTunes .
 

@@ -5,12 +5,13 @@ from django.contrib.auth import views as auth_views
 
 urlpatterns = [
     # ...
-    path('login/', views.login, name='login'),
     path('app_login/', views.app_login, name='app_login'),
     path('auth/', include('social_django.urls', namespace='social')),
     path('logout/', views.logout_view, name='logout_view'),
     path('after-auth/', views.after_auth, name='after-auth'),
     path('api/get_user_profile/', views.get_user_profile, name='get_user_profile'),
+    path('api/exchange_otc/', views.exchange_otc, name='exchange_otc'),
+    path('api/refresh_access_token/', views.refresh_access_token, name='refresh_access_token'),
     path('api/check_auth/', views.check_auth, name='check_auth'),
     path('api/user_playlists/', views.user_playlists, name='user_playlists'),
     path('accounts/logout/', auth_views.LogoutView.as_view(), name='logout'),

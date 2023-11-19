@@ -8,14 +8,35 @@ https://docs.djangoproject.com/en/4.0/topics/settings/
 
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/4.0/ref/settings/
+python manage.py runserver
+daphne rideTunes.asgi:application
+celery -A rideTunes worker --loglevel=info
 """
 
 from pathlib import Path
 from datetime import timedelta
 from dotenv import load_dotenv
 import os
+import environ
 
 load_dotenv()
+
+# Initialize the environ object
+env = environ.Env()
+
+# Read the .env file, if it exists
+environ.Env.read_env()
+
+if os.environ.get('PORT'):  # check if the PORT environment variable is set
+    port = int(os.environ.get('PORT'))  # if yes, get the value and convert it to an integer
+else:
+    port = int(os.environ.get('PORT', 8080))
+
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+SESSION_COOKIE_SECURE = True
+
+# Celery configurations
+CELERY_BROKER_URL = os.environ.get('CELERY_BROKER_URL', 'redis://localhost:6379/0')
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -33,7 +54,23 @@ SECRET_KEY = 'django-insecure-)vrph=*00771b505gcj@s@nm^%0==dm18l0fz0!3!f1h*n4(9w
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', '192.168.86.28']
+if os.environ.get('USE_CLOUD_RUN') == 'true':
+    ALLOWED_HOSTS = ['*']
+else:
+    ALLOWED_HOSTS = ['localhost', '127.0.0.1', '192.168.86.28','0.0.0.0']
+
+# ALLOWED_REDIRECT_HOSTS = ['sharetunez']
+
+ASGI_APPLICATION = 'rideTunes.routing.application'
+
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels_redis.core.RedisChannelLayer',
+        'CONFIG': {
+            "hosts": [('10.16.129.3', 6379)],
+        },
+    },
+}
 
 
 # Application definition
@@ -52,13 +89,7 @@ INSTALLED_APPS = [
     'channels',
 ]
 
-ASGI_APPLICATION = 'rideTunes.routing.application'
 
-CHANNEL_LAYERS = {
-    'default': {
-        'BACKEND': 'channels.layers.InMemoryChannelLayer'
-    }
-}
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -131,10 +162,19 @@ WSGI_APPLICATION = 'rideTunes.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.mysql',
+        'HOST': '/cloudsql/' + os.environ.get('INSTANCE_CONNECTION_NAME'),
+        'PORT': '3306',
+        'NAME': os.environ.get('DB_NAME'),
+        'USER': os.environ.get('DB_USER'),
+        'PASSWORD': os.environ.get('DB_PASSWORD'),
+        'OPTIONS': {
+            'charset': 'utf8mb4',
+            'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
+        },
     }
 }
+
 
 
 # Password validation
@@ -194,7 +234,7 @@ SOCIAL_AUTH_PIPELINE = (
     'social_core.pipeline.social_auth.social_details',
     'social_core.pipeline.social_auth.social_uid',
     'social_core.pipeline.social_auth.auth_allowed',
-    'social_core.pipeline.social_auth.social_user',
+    # 'social_core.pipeline.social_auth.social_user',
     'music.pipeline.social_user', 
     'social_core.pipeline.user.get_username',
     'social_core.pipeline.user.create_user',
@@ -212,44 +252,57 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': ()
 }
 
-# SIMPLE_JWT = {
-#     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
-#     'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
-#     'ROTATE_REFRESH_TOKENS': False,
-#     'BLACKLIST_AFTER_ROTATION': True,
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
+    'ROTATE_REFRESH_TOKENS': False,
+    'BLACKLIST_AFTER_ROTATION': True,
 
-#     'ALGORITHM': 'HS256',
-#     'SIGNING_KEY': SECRET_KEY,
-#     'VERIFYING_KEY': None,
-#     'AUDIENCE': None,
-#     'ISSUER': None,
+    'ALGORITHM': 'HS256',
+    'SIGNING_KEY': SECRET_KEY,
+    'VERIFYING_KEY': None,
+    'AUDIENCE': None,
+    'ISSUER': None,
 
-#     'AUTH_HEADER_TYPES': ('Bearer',),
-#     'AUTH_HEADER_NAME': 'HTTP_AUTHORIZATION',
-#     'USER_ID_FIELD': 'id',
-#     'USER_ID_CLAIM': 'user_id',
+    'AUTH_HEADER_TYPES': ('Bearer',),
+    'AUTH_HEADER_NAME': 'HTTP_AUTHORIZATION',
+    'USER_ID_FIELD': 'id',
+    'USER_ID_CLAIM': 'user_id',
 
-#     'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),
-#     'TOKEN_TYPE_CLAIM': 'token_type',
+    'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),
+    'TOKEN_TYPE_CLAIM': 'token_type',
 
-#     'JTI_CLAIM': 'jti',
+    'JTI_CLAIM': 'jti',
 
-#     'SLIDING_TOKEN_REFRESH_EXP_CLAIM': 'refresh_exp',
-#     'SLIDING_TOKEN_LIFETIME': timedelta(minutes=5),
-#     'SLIDING_TOKEN_REFRESH_LIFETIME': timedelta(days=1),
-# }
+    'SLIDING_TOKEN_REFRESH_EXP_CLAIM': 'refresh_exp',
+    'SLIDING_TOKEN_LIFETIME': timedelta(minutes=5),
+    'SLIDING_TOKEN_REFRESH_LIFETIME': timedelta(days=1),
+}
 
 
 SOCIAL_AUTH_SPOTIFY_KEY = os.environ.get('SPOTIFY_KEY')
 SOCIAL_AUTH_SPOTIFY_SECRET = os.environ.get('SPOTIFY_SECRET')
 SOCIAL_AUTH_SPOTIFY_SCOPE = ['playlist-modify-public', 'playlist-modify-private','playlist-read-private','user-read-playback-state','user-library-read'] # Add this line
-SOCIAL_AUTH_APPLE_KEY = 'your-apple-client-id'
-SOCIAL_AUTH_APPLE_SECRET = 'your-apple-client-secret'
-SOCIAL_AUTH_APPLE_SCOPE = ['name', 'email']
-SOCIAL_AUTH_APPLE_TEAM = 'your-team-id'
+SOCIAL_AUTH_APPLE_ID_CLIENT = 'com.sharetunez.me.sharetunez' 
+SOCIAL_AUTH_APPLE_ID_KEY = os.environ.get('APPLE_KEY')
+SOCIAL_AUTH_APPLE_ID_SECRET = """
+-----BEGIN PRIVATE KEY-----
+MIGTAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBHkwdwIBAQQgBTpyogZmh4CdLdLU
+2ynG4ej9k4X+L/c59nkcufeGltmgCgYIKoZIzj0DAQehRANCAAQOmC9BGLwSXZHA
+UnAe3POs7kipnH5F5GWVCn2UivLZft1ObwJpNyxi7p0dzLvMZJ0ZZtqFomia06oQ
+Ha4MOGmB
+-----END PRIVATE KEY-----
+"""
+SOCIAL_AUTH_APPLE_ID_SCOPE = ['name', 'email']
+SOCIAL_AUTH_APPLE_ID_TEAM = os.environ.get('APPLE_TEAM_ID')
 SOCIAL_AUTH_GOOGLE_OAUTH2_KEY = os.environ.get('GOOGLE_KEY')
 SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET = os.environ.get('GOOGLE_SECRET')
 SOCIAL_AUTH_LOGIN_REDIRECT_URL = '/music/after-auth/'
+
+SOCIAL_AUTH_SPOTIFY_AUTH_EXTRA_ARGUMENTS = {
+    'show_dialog': True
+}
+
 
 SOCIAL_AUTH_GOOGLE_OAUTH2_SCOPE = [
     'openid',
