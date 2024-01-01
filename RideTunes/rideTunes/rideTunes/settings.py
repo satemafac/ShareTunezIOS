@@ -67,7 +67,7 @@ CHANNEL_LAYERS = {
     'default': {
         'BACKEND': 'channels_redis.core.RedisChannelLayer',
         'CONFIG': {
-            "hosts": [('10.16.129.3', 6379)],
+            "hosts": [('127.0.0.1', 6379)],
         },
     },
 }
@@ -133,6 +133,7 @@ AUTHENTICATION_BACKENDS = (
     'social_core.backends.google.GoogleOAuth2',
 )
 
+SESSION_COOKIE_SAMESITE = None
 
 ROOT_URLCONF = 'rideTunes.urls'
 
@@ -163,7 +164,7 @@ WSGI_APPLICATION = 'rideTunes.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'HOST': '/cloudsql/' + os.environ.get('INSTANCE_CONNECTION_NAME'),
+        'HOST': '127.0.0.1',
         'PORT': '3306',
         'NAME': os.environ.get('DB_NAME'),
         'USER': os.environ.get('DB_USER'),
@@ -228,7 +229,6 @@ STATIC_URL = '/static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 
-
 # settings.py
 SOCIAL_AUTH_PIPELINE = (
     'social_core.pipeline.social_auth.social_details',
@@ -287,10 +287,10 @@ SOCIAL_AUTH_APPLE_ID_CLIENT = 'com.sharetunez.me.sharetunez'
 SOCIAL_AUTH_APPLE_ID_KEY = os.environ.get('APPLE_KEY')
 SOCIAL_AUTH_APPLE_ID_SECRET = """
 -----BEGIN PRIVATE KEY-----
-MIGTAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBHkwdwIBAQQgBTpyogZmh4CdLdLU
-2ynG4ej9k4X+L/c59nkcufeGltmgCgYIKoZIzj0DAQehRANCAAQOmC9BGLwSXZHA
-UnAe3POs7kipnH5F5GWVCn2UivLZft1ObwJpNyxi7p0dzLvMZJ0ZZtqFomia06oQ
-Ha4MOGmB
+MIGTAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBHkwdwIBAQQgCEn8atIchRv7Xgmo
+agXEwaPTNn2pkfwFhrP35q/yz+OgCgYIKoZIzj0DAQehRANCAASZvc7/bCgOJ3cU
+ZUt9ZrYsvAIiemUYoI/Q4/WNjcWvXNyLwGaQPU7/eJPwwoC0ly43vV47xhbTHhpF
+VY2HIf54
 -----END PRIVATE KEY-----
 """
 SOCIAL_AUTH_APPLE_ID_SCOPE = ['name', 'email']

@@ -34,6 +34,10 @@ from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 from django.http import HttpResponseForbidden
 from django.http import HttpResponse
+from django.core.exceptions import ObjectDoesNotExist
+from django.conf import settings
+import jwt
+from jwt import PyJWKClient
 from rideTunes.tasks import populate_remaining_tracks
 
 
@@ -51,6 +55,7 @@ GOOGLE_SECRET = os.environ.get("GOOGLE_SECRET")
 def app_login(request):
     # print( "APP Login Provider ",request.session['provider'])
     # print("APP Login UID ",request.session['uid'])
+    # Generate a unique state value
     spotify_auth_url = f"{reverse('social:begin', args=['spotify'])}?X-APP-VERSION={request.headers.get('X-APP-VERSION')}"
     apple_auth_url = reverse('social:begin', args=['apple-id'])
     google_auth_url = reverse('social:begin', args=['google-oauth2'])
@@ -91,6 +96,9 @@ def after_auth(request):
     
     access_token = backend.extra_data.get('access_token')
     refresh_token = backend.extra_data.get('refresh_token')
+
+    if provider == 'apple-id':
+        refresh_token = ''
 
     # Check if an OTC for this user already exists
     try:
@@ -163,6 +171,119 @@ def exchange_otc(request):
     except OneTimeCode.DoesNotExist:
         return JsonResponse({'error': 'Invalid OTC'}, status=400)
 
+def decode_identity_token(token):
+    # Fetch Apple's public keys
+    apple_keys_url = 'https://appleid.apple.com/auth/keys'
+    response = requests.get(apple_keys_url)
+    keys = response.json().get('keys', [])
+    
+    # Decode the token header to find which key ID (`kid`) to use
+    headers = jwt.get_unverified_header(token)
+    kid = headers.get('kid')
+    if not kid:
+        return False  # Header does not contain key ID
+    
+    # Find the Apple public key that matches the `kid` from the token header
+    key = next((key for key in keys if key.get('kid') == kid), None)
+    if not key:
+        return False  # Unable to find matching Apple public key
+
+    try:
+        # Construct the public key
+        jwk_client = PyJWKClient(apple_keys_url)
+        signing_key = jwk_client.get_signing_key_from_jwt(token)
+        
+        # Decode and verify the token
+        decoded = jwt.decode(token, signing_key.key, audience=settings.SOCIAL_AUTH_APPLE_ID_CLIENT, issuer='https://appleid.apple.com', algorithms=['RS256'])
+        return True  # Token verified
+
+    except jwt.PyJWTError as e:
+        # Token could not be verified, handle the specific error or log it
+        print(f"JWT verification error: {e}")
+        return False  # Verification failed
+
+    except Exception as e:
+        # Catch all other exceptions
+        print(f"Unexpected error: {e}")
+        return False  # Verification failed
+
+
+@csrf_exempt
+def apple_login(request):
+    if request.method == 'POST':
+        data = json.loads(request.body)
+        identity_token = data.get('identityToken')
+        user_id = data.get('userId')
+        first_name = data.get('firstName', '')
+        last_name = data.get('lastName', '')
+        email = data.get('email', '')
+
+        # Verify the identity token
+        is_verified = decode_identity_token(identity_token)
+        if is_verified:
+            user, created = User.objects.get_or_create(username=user_id)
+
+            if created:
+                # Update details if the user is newly created
+                user.first_name = first_name
+                user.last_name = last_name
+                user.email = email
+                user.userprofile.music_service = 'Apple Music'
+                user.save()
+                user.userprofile.save()
+            else:
+                # Retrieve details for existing users
+                first_name = user.first_name
+                last_name = user.last_name
+                email = user.email
+
+            # Generate or update the OTC and JWT tokens
+            otc, jwt_access_token, jwt_refresh_token = generate_or_update_tokens(user)
+
+            return JsonResponse({
+                'success': True,
+                'userId': user.id,
+                'otc': otc,
+                'firstName': first_name,
+                'lastName': last_name,
+                'email': email,
+                'existingUser': not created
+            }, status=200)
+        else:
+            return JsonResponse({'error': 'Verification failed'}, status=401)
+    
+    return JsonResponse({'error': 'Invalid request'}, status=400)
+
+def generate_or_update_tokens(user):
+    otc = secrets.token_urlsafe(32)
+    refresh = RefreshToken.for_user(user=user)
+    jwt_access_token = str(refresh.access_token)
+    jwt_refresh_token = str(refresh)
+
+    try:
+        existing_otc = OneTimeCode.objects.get(user=user)
+        print("OTC EXIST")
+        # Update existing OTC and tokens
+        existing_otc.code = otc
+        existing_otc.jwt_access_token = jwt_access_token
+        existing_otc.jwt_refresh_token = jwt_refresh_token
+        existing_otc.expires_at = get_expiry_time()
+        existing_otc.access_token = ''
+        existing_otc.save()
+    except OneTimeCode.DoesNotExist:
+        # Create new OTC if it doesn't exist
+        OneTimeCode.objects.create(
+            user=user,
+            code=otc,
+            jwt_access_token=jwt_access_token,
+            jwt_refresh_token=jwt_refresh_token,
+            access_token=''
+        )
+
+    return otc, jwt_access_token, jwt_refresh_token
+
+
+
 def refresh_access_token(provider, user_profile):
     if provider == 'spotify':
         TOKEN_URL = "https://accounts.spotify.com/api/token"
@@ -217,7 +338,9 @@ def check_auth(request):
 def get_user_profile(request):
     access_token = request.GET.get('access_token')
     provider = request.GET.get('provider')
+    u_id = request.GET.get('uid')
     print(request.user)
+    print(u_id)
 
     if not access_token:
         return JsonResponse({'error': 'No access token provided'}, status=400)
@@ -235,6 +358,16 @@ def get_user_profile(request):
             return JsonResponse({'display_name': display_name, 'profile_image': profile_image})
         else:
             return JsonResponse({'error': 'Failed to fetch user profile'}, status=500)
+
+    elif provider == 'apple-id':
+        try:
+            user = User.objects.get(pk=u_id)  # Query the User model using u_id
+            display_name = user.first_name  # Assuming you want to use first_name as display_name
+            print(display_name)
+            return JsonResponse({'display_name': display_name})
+        except User.DoesNotExist:
+            return JsonResponse({'error': 'User not found'}, status=404)
+
     elif provider == 'google-oauth2':
         try:
             # Build the credentials object
@@ -893,7 +1026,7 @@ def fetch_playlist_tracks(playlist_id, music_service, username):
                     response = requests.get(f'https://api.spotify.com/v1/playlists/{playlist_id}/tracks?limit={limit}&offset={offset}', headers=headers)
                 else:  # For subsequent requests, use the 'next' field from the previous response
                     response = requests.get(next_page_url, headers=headers)
-
+            print(response)
             if response.status_code == 200:
                 track_data = response.json()
                 track_items = [{'id': item['track']['id'], 
@@ -1148,6 +1281,7 @@ def accept_invite_qr(request):
         receiver_user_id = data.get('reciever_user_id')
 
         tracks = fetch_playlist_tracks(master_playlist_id, master_playlist_service, sender_username)
+        print(tracks)
         logger.debug(f"Fetched tracks: {tracks}")  # Log fetched tracks for debugging
 
         create_and_populate_playlist(tracks, receiver_username, receiver_service, playlist_name, master_playlist_service,receiver_user_id)

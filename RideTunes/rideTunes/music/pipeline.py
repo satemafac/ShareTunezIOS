@@ -6,8 +6,8 @@ def save_music_service(backend, user, response, *args, **kwargs):
     if backend.name == 'spotify':
         user.userprofile.music_service = 'Spotify'
         user.userprofile.access_token = response['access_token']
-    elif backend.name == 'apple':
-        user.userprofile.music_service = 'Apple Music'
+    elif backend.name == 'apple-id':
+        user.userprofile.music_service = 'Apple'
         user.userprofile.access_token = response['access_token']
     elif backend.name == 'google-oauth2':
         user.userprofile.music_service = 'YouTube'
