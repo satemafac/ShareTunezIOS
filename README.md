@@ -1,0 +1,5 @@
+![youtube_sharetunez](https://github.com/satemafac/ShareTunezIOS/assets/89307443/8a00ffe1-2d89-4dc3-ac4e-5e0e3346a6f6)
+![apple_sharetunez](https://github.com/satemafac/ShareTunezIOS/assets/89307443/a7535c43-386d-4f62-981a-d37b2e2fab0e)
+![IMG_5444](https://github.com/satemafac/ShareTunezIOS/assets/89307443/408dc005-5765-40a1-9227-630efa07f8e6)
+![iphone_sharetunez](https://github.com/satemafac/ShareTunezIOS/assets/89307443/f5de475b-ec21-4be3-bfa0-9ccf5bd63f21)
+![IMG_5445](https://github.com/satemafac/ShareTunezIOS/assets/89307443/7c0df1cf-59ed-47c8-8ec0-9e0a3c4aca2f)
