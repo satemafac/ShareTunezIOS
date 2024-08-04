@@ -37,16 +37,9 @@ from django.http import HttpResponse
 from django.core.exceptions import ObjectDoesNotExist
 from django.conf import settings
 import jwt
-import base64
 from jwt import PyJWKClient
 from rideTunes.tasks import populate_remaining_tracks
-from django.shortcuts import get_object_or_404
-from django.views.decorators.http import require_http_methods
-from urllib.parse import urlparse, parse_qs
-from langchain_openai import OpenAI
-from langchain_core.runnables import RunnableSequence
-from langchain.prompts import PromptTemplate
-from langchain.chains import LLMChain
+
 
 
 
@@ -56,85 +49,8 @@ SPOTIFY_KEY = os.environ.get("SPOTIFY_KEY")
 SPOTIFY_SECRET = os.environ.get("SPOTIFY_SECRET")
 GOOGLE_KEY = os.environ.get("GOOGLE_KEY")
 GOOGLE_SECRET = os.environ.get("GOOGLE_SECRET")
-OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 
-llm = OpenAI(api_key=OPENAI_API_KEY)
-# Define a prompt template correctly
-prompt_template = PromptTemplate(
-    input_variables=["title", "artist", "description"],
-    template="From the title '{title}', artist '{artist}', and description '{description}', extract and format it as: 'name: <track name>, artist: <artist name>'"
-)
 
-# Use the | operator to create a RunnableSequence
-runnable_sequence = prompt_template | llm
-
-def get_spotify_access_token():
-    """ Get an access token using the Client Credentials Flow for Spotify API """
-    url = "https://accounts.spotify.com/api/token"
-    headers = {
-        "Authorization": "Basic " + base64.b64encode(f"{SPOTIFY_KEY}:{SPOTIFY_SECRET}".encode()).decode()
-    }
-    payload = {
-        "grant_type": "client_credentials"
-    }
-    response = requests.post(url, headers=headers, data=payload)
-    if response.status_code == 200:
-        return response.json().get('access_token')
-    else:
-        return None
-
-def search_spotify_songs(query):
-    """ Search for songs on Spotify """
-    access_token = get_spotify_access_token()
-    if access_token:
-        url = f"https://api.spotify.com/v1/search?q={query}&type=track"
-        headers = {
-            "Authorization": f"Bearer {access_token}"
-        }
-        response = requests.get(url, headers=headers)
-        return response.json()  # You might want to handle pagination and errors appropriately
-    else:
-        return {"error": "Failed to authenticate with Spotify"}
-
-def search_youtube_videos(query):
-    """ Search for videos on YouTube """
-    url = f"https://www.googleapis.com/youtube/v3/search?part=snippet&q={query}&type=video&key={GOOGLE_KEY}"
-    response = requests.get(url)
-    return response.json()  # Handle pagination and errors as needed
-
-@csrf_exempt
-@require_http_methods(["POST"])
-def receive_music_urls(request):
-    try:
-        data = json.loads(request.body)
-        urls = data.get('urls', [])
-        results = []
-
-        for url in urls:
-            parsed_url = urlparse(url)
-            print(url)
-            domain = parsed_url.netloc
-            path = parsed_url.path
-            query_params = parse_qs(parsed_url.query)
-
-            if 'apple.com' in domain:
-                track_id = path.split('/')[-1]
-                results.append({'service': 'Apple Music', 'track_id': track_id})
-            elif 'spotify.com' in domain:
-                track_id = path.split('/')[-1]
-                results.append({'service': 'Spotify', 'track_id': track_id})
-            elif 'youtube.com' in domain or 'music.youtube.com' in domain:
-                video_id = query_params.get('v', [None])[0]
-                print(video_id)
-                if not video_id:
-                    # It seems like the 'v' parameter is not in the query, handle it accordingly
-                    print("No video ID found in the URL query parameters.")
-                    continue  # Skip adding this URL to results since no ID was found
-                results.append({'service': 'YouTube', 'video_id': video_id})
-
-        return JsonResponse({'status': 'success', 'data': results})
-    except Exception as e:
-        return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
 
 def app_login(request):
     # print( "APP Login Provider ",request.session['provider'])
@@ -212,14 +128,13 @@ def after_auth(request):
     
 
     user_profile = request.user.userprofile
-    username_set = user_profile.username_set
     user_profile.refresh_token = refresh_token
     user_profile.save()
     user_id = user_profile.user.id
 
 
     print("I Am sigining in MOBILEE")
-    custom_scheme_url = f'sharetunez://after_auth?otc={otc}&provider={provider}&username={request.user.username}&user_id={user_id}&username_set={username_set}'
+    custom_scheme_url = f'sharetunez://after_auth?otc={otc}&provider={provider}&username={request.user.username}&user_id={user_id}'
     response_content = f'<html><head><meta http-equiv="refresh" content="0;url={custom_scheme_url}"></head></html>'
     print(response_content)
     response = HttpResponse(response_content)
@@ -303,25 +218,24 @@ def apple_login(request):
         last_name = data.get('lastName', '')
         email = data.get('email', '')
 
+        # Verify the identity token
         is_verified = decode_identity_token(identity_token)
-
         if is_verified:
-            # Try to find an existing UserProfile with the given provider_username
-            try:
-                profile = UserProfile.objects.get(provider_username=user_id)
-                user = profile.user
-                username_set = profile.username_set
-                username = user.username
-                created = False
-            except UserProfile.DoesNotExist:
-                # No UserProfile found, so create a new User and UserProfile
-                user = User.objects.create_user(username=user_id, email=email, first_name=first_name, last_name=last_name)
+            user, created = User.objects.get_or_create(username=user_id)
+
+            if created:
+                # Update details if the user is newly created
+                user.first_name = first_name
+                user.last_name = last_name
+                user.email = email
                 user.userprofile.music_service = 'Apple Music'
-                user.userprofile.provider_username = user_id
-                user.userprofile.save()  
-                username = ""              
-                username_set = False
-                created = True
+                user.save()
+                user.userprofile.save()
+            else:
+                # Retrieve details for existing users
+                first_name = user.first_name
+                last_name = user.last_name
+                email = user.email
 
             # Generate or update the OTC and JWT tokens
             otc, jwt_access_token, jwt_refresh_token = generate_or_update_tokens(user)
@@ -333,13 +247,11 @@ def apple_login(request):
                 'firstName': first_name,
                 'lastName': last_name,
                 'email': email,
-                'username': username,
-                'username_set': username_set,
                 'existingUser': not created
             }, status=200)
         else:
             return JsonResponse({'error': 'Verification failed'}, status=401)
-
+    
     return JsonResponse({'error': 'Invalid request'}, status=400)
 
 def generate_or_update_tokens(user):
@@ -422,52 +334,6 @@ def check_auth(request):
     else:
         return HttpResponseForbidden()
 
-
-@csrf_exempt
-@require_http_methods(["POST"])  # Accept only POST requests
-def username_change(request):
-    try:
-        data = json.loads(request.body)
-        user_id = data.get('user_id')
-        username_changed = data.get('username_changed')
-        new_username = data.get('new_username')
-        provider = data.get('provider')  # Get the provider from the request
-
-
-        # Convert provider to a match db
-        if provider == 'spotify':
-            provider = 'Spotify'
-        elif provider == 'apple':
-            provider = 'Apple Music'
-        elif provider == 'google':
-            provider = 'YouTube'
-
-
-        # Get the user and profile
-        user = get_object_or_404(User, pk=user_id)
-        profile = user.userprofile
-
-        if username_changed:
-            # Check if the new username is available
-            if UserProfile.is_username_available(new_username, provider):
-                # Update the username and username_set
-                user.username = new_username
-                user.save()
-                profile.username_set = True
-                profile.save()
-                return JsonResponse({'status': 'success', 'message': 'Username updated successfully.'})
-            else:
-                return JsonResponse({'status': 'error', 'message': 'Username is not available.'})
-        else:
-            # Just update username_set
-            profile.username_set = True
-            profile.save()
-            return JsonResponse({'status': 'success', 'message': 'Username set flag updated successfully.'})
-
-    except Exception as e:
-        return JsonResponse({'status': 'error', 'message': str(e)})
-
-
 @ensure_csrf_cookie
 def get_user_profile(request):
     access_token = request.GET.get('access_token')
@@ -491,7 +357,6 @@ def get_user_profile(request):
             profile_image = data['images'][0]['url'] if data['images'] else None
             return JsonResponse({'display_name': display_name, 'profile_image': profile_image})
         else:
-            print(f"Failed to fetch Spotify profile: {response.status_code} {response.text}")
             return JsonResponse({'error': 'Failed to fetch user profile'}, status=500)
 
     elif provider == 'apple-id':
@@ -742,7 +607,7 @@ def fetch_playlist_items(request):
             # print(response.get('pageInfo'))
             total_results = response.get('pageInfo').get('totalResults')
             playlist_items = response.get('items')
-            print(playlist_items)
+            # print(playlist_items)
             return JsonResponse({'playlist_items': playlist_items, 'total_results': total_results})
 
         except Exception as e:
@@ -890,15 +755,12 @@ def send_invite(request):
         playlist_id = data.get('playlist_id')
         username = data.get('username')
         target_provider = data.get('target_provider')
-        tracks = data.get('tracks', [])  # Assuming 'tracks' is included in the request for Apple Music        
         if target_provider == "spotify":
             target_provider = "Spotify"
         elif target_provider == "google-oauth2":
             target_provider = "YouTube"
-        elif target_provider == "apple-id":
-            target_provider ="Apple Music"
-        playlist_name = data.get('music_kit_playlist_name', '')
-        playlist_artwork_url = data.get('music_kit_playlist_artwork_url', '')
+        elif target_provider == "apple":
+            target_provider ="Apple"
 
         provider = data.get('creator_provider') # The provider of the sender
         provider_user_id = data.get('user_id')
@@ -906,8 +768,6 @@ def send_invite(request):
         provider_user = User.objects.get(pk=provider_user_id)
 
         shared_playlist = SharedPlaylist.objects.filter(master_playlist_id=playlist_id).first()
-
-        print(playlist_id)
 
         # If the playlist is not in SharedPlaylist, fetch its details and add it
         if not shared_playlist:
@@ -926,8 +786,6 @@ def send_invite(request):
                     playlist_image_url = request.build_absolute_uri(staticfiles_storage.url('spotify-liked-songs.jpg'))
                 else:
                     response = requests.get(f'https://api.spotify.com/v1/playlists/{playlist_id}', headers=headers)
-                    print(playlist_id)
-
 
                 if response.status_code == 200:
                     playlist_data = response.json()
@@ -971,23 +829,6 @@ def send_invite(request):
                     shared_playlist.users.add(provider_user)
                 else:
                     return JsonResponse({'error': 'Failed to fetch YouTube playlist details'}, status=500)
-            elif provider == 'apple-id':
-                # Create and initially save the shared_playlist instance to ensure it has an id
-                shared_playlist = SharedPlaylist(
-                    name=playlist_name,
-                    image_url=playlist_artwork_url,
-                    master_playlist_endpoint='',
-                    master_playlist_id=playlist_id,
-                    master_playlist_owner=provider_user,
-                )
-                shared_playlist.save()  # Save the instance to get an id
-
-                # Now that shared_playlist has an id, set tracks
-                shared_playlist.set_tracks(tracks)
-                shared_playlist.save()  # Save again to update with tracks_file_path
-
-                # Add users
-                shared_playlist.users.add(provider_user)
             else:
                 return JsonResponse({'error': f'Provider {provider} not supported'}, status=400)
 
@@ -1042,7 +883,8 @@ def send_invite(request):
         
         return JsonResponse({'message': 'Playlist Invite sent!'})
     else:
-        return JsonResponse({'error': 'Invalid request method'}, status=405)    
+        return JsonResponse({'error': 'Invalid request method'}, status=405)
+    
 
 def fetch_playlist_info(request):
 
@@ -1203,7 +1045,7 @@ def fetch_playlist_tracks(playlist_id, music_service, username):
                 print(f'Response Content: {response.content}')
                 break
 
-    elif music_service == 'YouTube' or music_service == 'google-oauth2':
+    elif music_service == 'YouTube' or music_service == 'google-oauth2' :
         credentials = Credentials(token=access_token)
         youtube = build('youtube', 'v3', credentials=credentials, cache_discovery=False)
         nextPageToken = None
@@ -1216,45 +1058,19 @@ def fetch_playlist_tracks(playlist_id, music_service, username):
                 playlistId=playlist_id,
                 pageToken=nextPageToken
             ).execute()
+            print(response)
 
             if 'items' in response:
+                video_items = []
                 for item in response['items']:
                     video_id = item['snippet']['resourceId']['videoId']
                     name = item['snippet']['title']
-                    artist = item['snippet'].get('videoOwnerChannelTitle', '').replace(' - Topic', '')  # Stripping "- Topic" from the artist name
-                    description = item['snippet'].get('description', '')
+                    artist = item['snippet'].get('videoOwnerChannelTitle', '').replace(' - Topic', '')
+                    video_items.append({'id': video_id, 'name': name, 'artist': artist})
 
-                    if 'Release - Topic' in artist:
-                        print("Processing with LangChain for video ID:", video_id)
-                        try:
-                            cleaned_data = runnable_sequence.invoke({'description': description})
-                            print(cleaned_data)
 
-                            # Check if the cleaned data is in the expected format
-                            if ', ' in cleaned_data:
-                                parts = cleaned_data.split(', ')
-                                if len(parts) >= 2:
-                                    name_part = parts[0]
-                                    artist_part = parts[1]
-
-                                    if ': ' in name_part and ': ' in artist_part:
-                                        name = name_part.split(': ')[1].strip()
-                                        # Splitting the artist part by commas to handle multiple artists
-                                        artist_list = artist_part.split(': ')[1].split(',')
-                                        # Stripping whitespace from each artist name
-                                        artists = [artist.strip() for artist in artist_list]
-                                        # Joining the list back into a single string if necessary
-                                        artist = ', '.join(artists)
-                                    else:
-                                        print("Error: Unexpected format in name or artist part")
-                                else:
-                                    print("Error: Not enough parts from cleaned data")
-                            else:
-                                print("Error: Cleaned data does not contain expected separator")
-                        except Exception as e:
-                            print(f"Error during RunnableSequence invocation: {str(e)}")
-
-                    tracks.append({'id': video_id, 'name': name, 'artist': artist})
+                print(video_items)
+                tracks.extend(video_items)
 
                 nextPageToken = response.get('nextPageToken')
                 if not nextPageToken:
@@ -1262,48 +1078,11 @@ def fetch_playlist_tracks(playlist_id, music_service, username):
             else:
                 print('Failed to fetch YouTube playlist tracks')
                 break
-    print(tracks)
+
+    else:
+        print(f'Music service {music_service} not supported')
 
     return tracks
-
-    # elif music_service == 'YouTube' or music_service == 'google-oauth2' :
-    #     credentials = Credentials(token=access_token)
-    #     youtube = build('youtube', 'v3', credentials=credentials, cache_discovery=False)
-    #     nextPageToken = None
-    #     playlist_id = 'LM' if playlist_id == 'liked_music' else playlist_id
-
-    #     while True:
-    #         response = youtube.playlistItems().list(
-    #             part='snippet',
-    #             maxResults=50,
-    #             playlistId=playlist_id,
-    #             pageToken=nextPageToken
-    #         ).execute()
-    #         print(response)
-
-    #         if 'items' in response:
-    #             video_items = []
-    #             for item in response['items']:
-    #                 video_id = item['snippet']['resourceId']['videoId']
-    #                 name = item['snippet']['title']
-    #                 artist = item['snippet'].get('videoOwnerChannelTitle', '').replace(' - Topic', '')
-    #                 video_items.append({'id': video_id, 'name': name, 'artist': artist})
-
-
-    #             print(video_items)
-    #             tracks.extend(video_items)
-
-    #             nextPageToken = response.get('nextPageToken')
-    #             if not nextPageToken:
-    #                 break
-    #         else:
-    #             print('Failed to fetch YouTube playlist tracks')
-    #             break
-
-    # else:
-    #     print(f'Music service {music_service} not supported')
-
-    # return tracks
 
  
 def create_and_populate_playlist(tracks, username, music_service, playlist_name,master_playlist_service,receiver_user_id):
@@ -1318,7 +1097,6 @@ def create_and_populate_playlist(tracks, username, music_service, playlist_name,
     print(len(tracks))
 
     if music_service == 'Spotify':
-        username = user_profile.provider_username
         headers = {'Authorization': f'Bearer {access_token}'}
         data = {
             'name': playlist_name,
@@ -1342,11 +1120,9 @@ def create_and_populate_playlist(tracks, username, music_service, playlist_name,
             if master_playlist_service != "Spotify":
                 for track in initial_track_candidates:
                     search_query = f"{track['name']} {track['artist']}"
-                    print(search_query)
                     response = requests.get(f"https://api.spotify.com/v1/search?q={search_query}&type=track&limit=1", headers=headers)
                     if response.status_code == 200:
                         search_results = response.json()
-                        # print(search_results['tracks']['items'][0])
                         if search_results['tracks']['items']:
                             track_id = search_results['tracks']['items'][0]['id']
                             track_uris.append(f"spotify:track:{track_id}")
@@ -1489,38 +1265,7 @@ def accept_invite(request):
     else:
         return JsonResponse({'error': 'Invalid request method'}, status=405)
 
-@csrf_exempt
-@require_http_methods(["POST"])
-def accept_invite_qr(request):
-    logger.info("accept_invite_qr function called")  # Log the function call
 
-    try:
-        data = json.loads(request.body)
-        master_playlist_id = data.get('master_playlist_id')
-        playlist_name = data.get('playlist_name')
-        master_playlist_service = data.get('master_playlist_service')
-        sender_username = data.get('sender_username')
-        receiver_username = data.get('receiver_username')
-        receiver_service = data.get('receiver_service')
-        receiver_user_id = data.get('reciever_user_id')
-        tracks = data.get('tracks')  # Get tracks from request data
-
-        if not tracks:
-            # If tracks are not provided in the request, fetch them
-            tracks = fetch_playlist_tracks(master_playlist_id, master_playlist_service, sender_username)
-            logger.debug(f"Fetched tracks: {tracks}")  # Log fetched tracks for debugging
-
-        if receiver_service == 'apple-id':
-            # If receiver service is 'apple-id', return the tracks
-            return JsonResponse({"tracks": tracks}, status=200)
-        else:
-            # Otherwise, create and populate the playlist as usual
-            create_and_populate_playlist(tracks, receiver_username, receiver_service, playlist_name, master_playlist_service, receiver_user_id)
-            return JsonResponse({"message": "Playlist successfully created and populated with tracks!"}, status=200)
-
-    except Exception as e:
-        logger.error(f"Error in accept_invite_qr: {e}")  # Log the error
-        return JsonResponse({"error": str(e)}, status=400)
 
 # This function will add a user to a shared playlist
 def add_user_to_shared_playlist(playlist_id, username, provider, target_provider):

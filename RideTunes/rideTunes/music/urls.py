@@ -11,6 +11,7 @@ urlpatterns = [
     path('logout/', views.logout_view, name='logout_view'),
     path('after-auth/', views.after_auth, name='after-auth'),
     path('api/get_user_profile/', views.get_user_profile, name='get_user_profile'),
+    path('api/username_change/', views.username_change, name='username_change'),
     path('api/exchange_otc/', views.exchange_otc, name='exchange_otc'),
     path('api/refresh_access_token/', views.refresh_access_token, name='refresh_access_token'),
     path('api/check_auth/', views.check_auth, name='check_auth'),
@@ -26,6 +27,6 @@ urlpatterns = [
     path('api/delete_playlist/', views.delete_playlist, name='delete_playlist'),
     path('api/available_devices/', views.available_devices, name='available_devices'),
     path('api/fetch_notifications/', views.fetch_notifications, name='fetch_notifications'),
-
+    path('api/receive_music_urls/', views.receive_music_urls, name='receive_music_urls'),
     # ...
 ]

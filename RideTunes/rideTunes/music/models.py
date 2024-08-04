@@ -5,13 +5,22 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 from datetime import timedelta
 from django.utils import timezone
+import json
+from django.conf import settings
+import os
 
 
 class UserProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='userprofile')
     music_service = models.CharField(max_length=100, blank=True)
     access_token = models.TextField(blank=True)
-    refresh_token = models.TextField(blank=True)  # Add this line
+    refresh_token = models.TextField(blank=True)
+    username_set = models.BooleanField(default=False)  # New boolean field
+    provider_username = models.CharField(max_length=100, blank=True)
+
+    @staticmethod
+    def is_username_available(username, provider):
+        return not User.objects.filter(username=username, userprofile__music_service=provider).exists()
 
     def __str__(self):
         return self.user.username
@@ -32,8 +41,6 @@ class OneTimeCode(models.Model):
     def is_valid(self):
         return timezone.now() < self.expires_at
 
-    
-    
 class SharedPlaylist(models.Model):
     name = models.CharField(max_length=255)
     users = models.ManyToManyField(User, related_name="shared_playlists")
@@ -45,9 +52,36 @@ class SharedPlaylist(models.Model):
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    tracks_file_path = models.CharField(max_length=255, blank=True, null=True)
+    
+    def set_tracks(self, tracks):
+        if tracks:
+            # Define the directory to store playlist tracks files
+            tracks_dir = os.path.join(settings.MEDIA_ROOT, 'playlist_tracks')
+            if not os.path.exists(tracks_dir):
+                os.makedirs(tracks_dir)
+
+            # Define the file path
+            file_name = f"playlist_{self.id}_tracks.json"
+            file_path = os.path.join(tracks_dir, file_name)
+
+            # Write tracks data to the file
+            with open(file_path, 'w') as file:
+                json.dump(tracks, file)
+
+            # Save the relative file path in the model
+            self.tracks_file_path = os.path.join('playlist_tracks', file_name)
+            self.save()
+
+    def get_tracks(self):
+        if self.tracks_file_path:
+            file_path = os.path.join(settings.MEDIA_ROOT, self.tracks_file_path)
+            with open(file_path, 'r') as file:
+                return json.load(file)
+        return []
 
     def __str__(self):
-        return self.name
+        return self.name    
     
 class PlaylistInvite(models.Model):
     playlist = models.ForeignKey(SharedPlaylist, on_delete=models.CASCADE)

@@ -11,6 +11,23 @@ https://docs.djangoproject.com/en/4.0/ref/settings/
 python manage.py runserver
 daphne rideTunes.asgi:application
 celery -A rideTunes worker --loglevel=info
+sudo nano ~/.bashrc
+
+ssh -v -i ~/.ssh/id_rsa anustalanic@35.232.200.133
+source venv/bin/activate
+python manage.py runserver
+daphne rideTunes.asgi:application
+daphne -b 127.0.0.1 -p 8001 rideTunes.asgi:application
+daphne -u /tmp/daphne.sock rideTunes.asgi:application
+gunicorn --workers 3 --bind 0.0.0.0:8000 rideTunes.wsgi
+gunicorn --workers 3 --timeout 60 --bind 0.0.0.0:8000 rideTunes.wsgi
+celery -A rideTunes worker --loglevel=info
+cd /etc/nginx/sites-available/
+nano ~/.bashrc
+source ~/.bashrc
+sudo netstat -tulnp | grep :8000
+sudo kill 319965
+python manage.py flush
 """
 
 from pathlib import Path
@@ -164,7 +181,7 @@ WSGI_APPLICATION = 'rideTunes.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'HOST': '127.0.0.1',
+        'HOST': '34.66.211.148',
         'PORT': '3306',
         'NAME': os.environ.get('DB_NAME'),
         'USER': os.environ.get('DB_USER'),
