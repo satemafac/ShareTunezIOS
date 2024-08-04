@@ -58,6 +58,8 @@ CELERY_BROKER_URL = os.environ.get('CELERY_BROKER_URL', 'redis://localhost:6379/
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+
 # React app build directory
 REACT_APP_DIR = os.path.join('fe-ride_tunes', 'public')
 
