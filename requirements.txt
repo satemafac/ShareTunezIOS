@@ -3,7 +3,7 @@ anyio==3.6.2
 asgiref==3.6.0
 async-timeout==4.0.2
 attrs==23.1.0
-autobahn==23.1.2
+autobahn==23.6.2
 Automat==22.10.0
 billiard==4.1.0
 cachetools==5.3.0
