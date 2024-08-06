@@ -14,7 +14,7 @@ celery -A rideTunes worker --loglevel=info
 sudo nano ~/.bashrc
 
 ssh -v -i ~/.ssh/id_rsa anustalanic@35.232.200.133
-source venv/bin/activate
+source env/bin/activate
 python manage.py runserver
 daphne rideTunes.asgi:application
 daphne -b 127.0.0.1 -p 8001 rideTunes.asgi:application
@@ -184,18 +184,25 @@ WSGI_APPLICATION = 'rideTunes.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/4.0/ref/settings/#databases
 
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.mysql',
+#         'HOST': '34.66.211.148',
+#         'PORT': '3306',
+#         'NAME': os.environ.get('DB_NAME'),
+#         'USER': os.environ.get('DB_USER'),
+#         'PASSWORD': os.environ.get('DB_PASSWORD'),
+#         'OPTIONS': {
+#             'charset': 'utf8mb4',
+#             'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
+#         },
+#     }
+# }
+
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.mysql',
-        'HOST': '34.66.211.148',
-        'PORT': '3306',
-        'NAME': os.environ.get('DB_NAME'),
-        'USER': os.environ.get('DB_USER'),
-        'PASSWORD': os.environ.get('DB_PASSWORD'),
-        'OPTIONS': {
-            'charset': 'utf8mb4',
-            'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
-        },
+    "default": {
+        "ENGINE": "django.db.backends.sqlite3",
+        "NAME": str(BASE_DIR / "db.sqlite3"),
     }
 }
 
