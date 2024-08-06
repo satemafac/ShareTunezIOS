@@ -1,7 +1,1 @@
-<<<<<<< HEAD
 web: gunicorn rideTunes.wsgi:application log-file -
-=======
-web: gunicorn myproject.wsgi:application --bind 0.0.0.0:$PORT
-web: python manage.py runserver 0.0.0.0:$PORT
-web: daphne RideTunes.rideTunes.rideTunes.asgi:application --port $PORT --bind 0.0.0.0 -v2}
->>>>>>> 348179a51d3a13d49fda115e0ea2f3ce9a82cc69
