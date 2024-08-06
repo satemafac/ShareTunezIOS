@@ -73,7 +73,7 @@ REACT_APP_DIR = os.path.join('fe-ride_tunes', 'public')
 SECRET_KEY = 'django-insecure-)vrph=*00771b505gcj@s@nm^%0==dm18l0fz0!3!f1h*n4(9w'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
+DEBUG = True
 
 if os.environ.get('USE_CLOUD_RUN') == 'true':
     ALLOWED_HOSTS = ['*']

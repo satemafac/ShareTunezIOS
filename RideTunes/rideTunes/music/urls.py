@@ -5,7 +5,6 @@ from django.contrib.auth import views as auth_views
 
 urlpatterns = [
     # ...
-    path('', views.index, name='index'),
     path('app_login/', views.app_login, name='app_login'),
     path('apple_login/', views.apple_login, name='apple_login'),
     path('auth/', include('social_django.urls', namespace='social')),
