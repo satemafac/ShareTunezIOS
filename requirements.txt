@@ -21,9 +21,11 @@ constantly==15.1.0
 cryptography==41.0.3
 daphne==4.0.0
 defusedxml==0.7.1
+dj-database-url==2.2.0
 Django==4.1.7
 django-cors-headers==3.14.0
 django-environ==0.10.0
+django-heroku==0.3.1
 django-webpack-loader==1.8.1
 djangorestframework==3.14.0
 djangorestframework-simplejwt==5.2.2
@@ -50,6 +52,7 @@ oauthlib==3.2.2
 packaging==23.1
 prompt-toolkit==3.0.39
 protobuf==4.21.12
+psycopg2==2.9.9
 psycopg2-binary==2.9.7
 pyasn1==0.4.8
 pyasn1-modules==0.2.8

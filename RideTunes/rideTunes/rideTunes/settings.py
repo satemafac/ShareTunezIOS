@@ -34,6 +34,8 @@ from pathlib import Path
 from datetime import timedelta
 from dotenv import load_dotenv
 import os
+import django_heroku
+import dj_database_url
 import environ
 
 load_dotenv()
@@ -76,7 +78,9 @@ DEBUG = True
 if os.environ.get('USE_CLOUD_RUN') == 'true':
     ALLOWED_HOSTS = ['*']
 else:
-    ALLOWED_HOSTS = ['localhost', '127.0.0.1', '192.168.86.28','0.0.0.0']
+    # ALLOWED_HOSTS = ['localhost', '127.0.0.1', '192.168.86.28','0.0.0.0']
+    ALLOWED_HOSTS = ['*']
+
 
 # ALLOWED_REDIRECT_HOSTS = ['sharetunez']
 
@@ -334,3 +338,5 @@ SOCIAL_AUTH_GOOGLE_OAUTH2_AUTH_EXTRA_ARGUMENTS = {
     'access_type': 'offline',      # Requests a refresh token
     'approval_prompt': 'force',    # Forces re-approval to get a new refresh token each time
 }
+
+django_heroku.settings(locals())
