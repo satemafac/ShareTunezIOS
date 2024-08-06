@@ -79,8 +79,7 @@ if os.environ.get('USE_CLOUD_RUN') == 'true':
     ALLOWED_HOSTS = ['*']
 else:
     # ALLOWED_HOSTS = ['localhost', '127.0.0.1', '192.168.86.28','0.0.0.0']
-    ALLOWED_HOSTS = ['*']
-
+    ALLOWED_HOSTS = ['.herokuapp.com', 'localhost', '127.0.0.1']
 
 # ALLOWED_REDIRECT_HOSTS = ['sharetunez']
 
