@@ -1203,70 +1203,7 @@ def fetch_playlist_tracks(playlist_id, music_service, username):
                 print(f'Response Content: {response.content}')
                 break
 
-    elif music_service == 'YouTube' or music_service == 'google-oauth2':
-        credentials = Credentials(token=access_token)
-        youtube = build('youtube', 'v3', credentials=credentials, cache_discovery=False)
-        nextPageToken = None
-        playlist_id = 'LM' if playlist_id == 'liked_music' else playlist_id
-
-        while True:
-            response = youtube.playlistItems().list(
-                part='snippet',
-                maxResults=50,
-                playlistId=playlist_id,
-                pageToken=nextPageToken
-            ).execute()
-
-            if 'items' in response:
-                for item in response['items']:
-                    video_id = item['snippet']['resourceId']['videoId']
-                    name = item['snippet']['title']
-                    artist = item['snippet'].get('videoOwnerChannelTitle', '').replace(' - Topic', '')  # Stripping "- Topic" from the artist name
-                    description = item['snippet'].get('description', '')
-
-                    if 'Release - Topic' in artist:
-                        print("Processing with LangChain for video ID:", video_id)
-                        try:
-                            cleaned_data = runnable_sequence.invoke({'description': description})
-                            print(cleaned_data)
-
-                            # Check if the cleaned data is in the expected format
-                            if ', ' in cleaned_data:
-                                parts = cleaned_data.split(', ')
-                                if len(parts) >= 2:
-                                    name_part = parts[0]
-                                    artist_part = parts[1]
-
-                                    if ': ' in name_part and ': ' in artist_part:
-                                        name = name_part.split(': ')[1].strip()
-                                        # Splitting the artist part by commas to handle multiple artists
-                                        artist_list = artist_part.split(': ')[1].split(',')
-                                        # Stripping whitespace from each artist name
-                                        artists = [artist.strip() for artist in artist_list]
-                                        # Joining the list back into a single string if necessary
-                                        artist = ', '.join(artists)
-                                    else:
-                                        print("Error: Unexpected format in name or artist part")
-                                else:
-                                    print("Error: Not enough parts from cleaned data")
-                            else:
-                                print("Error: Cleaned data does not contain expected separator")
-                        except Exception as e:
-                            print(f"Error during RunnableSequence invocation: {str(e)}")
-
-                    tracks.append({'id': video_id, 'name': name, 'artist': artist})
-
-                nextPageToken = response.get('nextPageToken')
-                if not nextPageToken:
-                    break
-            else:
-                print('Failed to fetch YouTube playlist tracks')
-                break
-    print(tracks)
-
-    return tracks
-
-    # elif music_service == 'YouTube' or music_service == 'google-oauth2' :
+    # elif music_service == 'YouTube' or music_service == 'google-oauth2':
     #     credentials = Credentials(token=access_token)
     #     youtube = build('youtube', 'v3', credentials=credentials, cache_discovery=False)
     #     nextPageToken = None
@@ -1279,19 +1216,45 @@ def fetch_playlist_tracks(playlist_id, music_service, username):
     #             playlistId=playlist_id,
     #             pageToken=nextPageToken
     #         ).execute()
-    #         print(response)
 
     #         if 'items' in response:
-    #             video_items = []
     #             for item in response['items']:
     #                 video_id = item['snippet']['resourceId']['videoId']
     #                 name = item['snippet']['title']
-    #                 artist = item['snippet'].get('videoOwnerChannelTitle', '').replace(' - Topic', '')
-    #                 video_items.append({'id': video_id, 'name': name, 'artist': artist})
+    #                 artist = item['snippet'].get('videoOwnerChannelTitle', '').replace(' - Topic', '')  # Stripping "- Topic" from the artist name
+    #                 description = item['snippet'].get('description', '')
 
+    #                 if 'Release - Topic' in artist:
+    #                     print("Processing with LangChain for video ID:", video_id)
+    #                     try:
+    #                         cleaned_data = runnable_sequence.invoke({'description': description})
+    #                         print(cleaned_data)
 
-    #             print(video_items)
-    #             tracks.extend(video_items)
+    #                         # Check if the cleaned data is in the expected format
+    #                         if ', ' in cleaned_data:
+    #                             parts = cleaned_data.split(', ')
+    #                             if len(parts) >= 2:
+    #                                 name_part = parts[0]
+    #                                 artist_part = parts[1]
+
+    #                                 if ': ' in name_part and ': ' in artist_part:
+    #                                     name = name_part.split(': ')[1].strip()
+    #                                     # Splitting the artist part by commas to handle multiple artists
+    #                                     artist_list = artist_part.split(': ')[1].split(',')
+    #                                     # Stripping whitespace from each artist name
+    #                                     artists = [artist.strip() for artist in artist_list]
+    #                                     # Joining the list back into a single string if necessary
+    #                                     artist = ', '.join(artists)
+    #                                 else:
+    #                                     print("Error: Unexpected format in name or artist part")
+    #                             else:
+    #                                 print("Error: Not enough parts from cleaned data")
+    #                         else:
+    #                             print("Error: Cleaned data does not contain expected separator")
+    #                     except Exception as e:
+    #                         print(f"Error during RunnableSequence invocation: {str(e)}")
+
+    #                 tracks.append({'id': video_id, 'name': name, 'artist': artist})
 
     #             nextPageToken = response.get('nextPageToken')
     #             if not nextPageToken:
@@ -1299,11 +1262,48 @@ def fetch_playlist_tracks(playlist_id, music_service, username):
     #         else:
     #             print('Failed to fetch YouTube playlist tracks')
     #             break
-
-    # else:
-    #     print(f'Music service {music_service} not supported')
+    # print(tracks)
 
     # return tracks
+
+    elif music_service == 'YouTube' or music_service == 'google-oauth2' :
+        credentials = Credentials(token=access_token)
+        youtube = build('youtube', 'v3', credentials=credentials, cache_discovery=False)
+        nextPageToken = None
+        playlist_id = 'LM' if playlist_id == 'liked_music' else playlist_id
+
+        while True:
+            response = youtube.playlistItems().list(
+                part='snippet',
+                maxResults=50,
+                playlistId=playlist_id,
+                pageToken=nextPageToken
+            ).execute()
+            print(response)
+
+            if 'items' in response:
+                video_items = []
+                for item in response['items']:
+                    video_id = item['snippet']['resourceId']['videoId']
+                    name = item['snippet']['title']
+                    artist = item['snippet'].get('videoOwnerChannelTitle', '').replace(' - Topic', '')
+                    video_items.append({'id': video_id, 'name': name, 'artist': artist})
+
+
+                print(video_items)
+                tracks.extend(video_items)
+
+                nextPageToken = response.get('nextPageToken')
+                if not nextPageToken:
+                    break
+            else:
+                print('Failed to fetch YouTube playlist tracks')
+                break
+
+    else:
+        print(f'Music service {music_service} not supported')
+
+    return tracks
 
  
 def create_and_populate_playlist(tracks, username, music_service, playlist_name,master_playlist_service,receiver_user_id):
