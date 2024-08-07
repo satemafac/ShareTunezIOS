@@ -55,7 +55,7 @@ SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 SESSION_COOKIE_SECURE = True
 
 # Celery configurations
-CELERY_BROKER_URL = os.environ.get('REDIS_URL', 'redis://localhost:6379/0')
+CELERY_BROKER_URL = os.environ.get('REDISCLOUD_URL', 'redis://default:6crHilZkUggR3Ki61Xr9YhTkP8A6wOyQ@redis-13036.c61.us-east-1-3.ec2.redns.redis-cloud.com:13036')
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
