@@ -1155,9 +1155,9 @@ def fetch_playlist_info(request):
     
 
 def fetch_playlist_tracks(playlist_id, music_service, username):
-    if(music_service == 'spotify'):
+    if music_service == 'spotify':
         music_service = 'Spotify'
-    elif(music_service == 'google-oauth2'):
+    elif music_service == 'google-oauth2':
         music_service = 'YouTube'
     user_profile = User.objects.filter(username=username, userprofile__music_service=music_service).first()
 
@@ -1184,12 +1184,13 @@ def fetch_playlist_tracks(playlist_id, music_service, username):
                     response = requests.get(f'https://api.spotify.com/v1/playlists/{playlist_id}/tracks?limit={limit}&offset={offset}', headers=headers)
                 else:  # For subsequent requests, use the 'next' field from the previous response
                     response = requests.get(next_page_url, headers=headers)
-            print(response)
+            print(json.dumps(response.json(), indent=4))  # Pretty-print the response
+
             if response.status_code == 200:
                 track_data = response.json()
                 track_items = [{'id': item['track']['id'], 
-                           'name': item['track']['name'], 
-                           'artist': item['track']['artists'][0]['name']} for item in track_data['items']]
+                               'name': item['track']['name'], 
+                               'artist': item['track']['artists'][0]['name']} for item in track_data['items']]
                 tracks.extend(track_items)
 
                 next_page_url = track_data.get('next')
@@ -1216,6 +1217,8 @@ def fetch_playlist_tracks(playlist_id, music_service, username):
                 playlistId=playlist_id,
                 pageToken=nextPageToken
             ).execute()
+            
+            print(json.dumps(response, indent=4))  # Pretty-print the response
 
             if 'items' in response:
                 for item in response['items']:
