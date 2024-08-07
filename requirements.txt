@@ -9,9 +9,9 @@ async-timeout==4.0.2
 attrs==23.1.0
 autobahn==23.6.2
 Automat==22.10.0
-billiard==4.1.0
+billiard==4.2.0
 cachetools==5.3.0
-celery==5.3.4
+celery==5.4.0
 certifi==2022.12.7
 cffi==1.15.1
 channels==4.0.0
@@ -52,7 +52,7 @@ idna==3.4
 incremental==22.10.0
 jsonpatch==1.33
 jsonpointer==3.0.0
-kombu==5.3.2
+kombu==5.4.0
 langchain==0.2.12
 langchain-core==0.2.28
 langchain-openai==0.1.20
@@ -105,7 +105,7 @@ typing_extensions==4.8.0
 tzdata==2023.3
 uritemplate==4.1.1
 urllib3==1.26.15
-vine==5.0.0
+vine==5.1.0
 wcwidth==0.2.8
 whitenoise==6.4.0
 yarl==1.9.4
