@@ -1356,8 +1356,8 @@ def create_and_populate_playlist(tracks, username, music_service, playlist_name,
             # Add the initial tracks to the playlist
             requests.post(f"https://api.spotify.com/v1/playlists/{new_playlist_id}/tracks", headers=headers, json={'uris': track_uris})
             # If there are more tracks, use the Celery task
-            if len(tracks) > 100:
-                remaining_tracks = tracks[100:]
+            if len(tracks) > 50:
+                remaining_tracks = tracks[50:]
                 print("Entering backgroung process")
                 populate_remaining_tracks.delay(new_playlist_id, remaining_tracks, headers, master_playlist_service,music_service,receiver_user_id)
             
