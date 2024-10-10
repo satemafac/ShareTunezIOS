@@ -1338,7 +1338,7 @@ def create_and_populate_playlist(tracks, username, music_service, playlist_name,
             # print("TRACKS ARE",tracks)
             print(master_playlist_service)
             # Search for up to the first 100 tracks by name and artist, if not from master service
-            initial_track_candidates = tracks[:100]
+            initial_track_candidates = tracks[:25]
             if master_playlist_service != "Spotify":
                 for track in initial_track_candidates:
                     search_query = f"{track['name']} {track['artist']}"
