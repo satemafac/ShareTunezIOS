@@ -18,5 +18,7 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'rideTunes.settings')
 
 application = ProtocolTypeRouter({
     "http": get_asgi_application(),
-    "websocket": URLRouter(rideTunes.routing.websocket_urlpatterns),
+    "websocket": AuthMiddlewareStack(
+        URLRouter(rideTunes.routing.websocket_urlpatterns)
+    ),
 })

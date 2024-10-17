@@ -123,15 +123,15 @@ else:
 
 ASGI_APPLICATION = 'rideTunes.routing.application'
 
-# CHANNEL_LAYERS = {
-#     'default': {
-#         'BACKEND': 'channels_redis.core.RedisChannelLayer',
-#         'CONFIG': {
-#             "hosts": [('127.0.0.1', 6379)],
-#         },
-#     },
-# }
-
+# Channels Layer Configuration
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels_redis.core.RedisChannelLayer',
+        'CONFIG': {
+            "hosts": [os.getenv('REDIS_TLS_URL', 'redis://localhost:6379')],
+        },
+    },
+}
 
 # Application definition
 
