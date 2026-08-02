@@ -1,4 +1,35 @@
+# Secrets — never commit any of these
 .env
+*.p8
+*.p12
+*.pem
+oauth.json
+
+# Python
 *.pyc
 __pycache__/
 venv/
+env/
+.venv/
+
+# Databases and dumps — data, not source
+*.sqlite3
+*.db
+dump.rdb
+
+# Django
+staticfiles/
+media/
+playlist_tracks/
+
+# Editor backups (nano/vim leftovers that got committed once already)
+*.py.save
+*.py.save.*
+*.swp
+*~
+
+# Node
+node_modules/
+
+# macOS
+.DS_Store
