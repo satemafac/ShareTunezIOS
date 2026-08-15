@@ -10,14 +10,14 @@ REGRESSION are ones the previous implementation (views.py:105-137) got wrong.
 
 import unittest
 
-from music.resolvers import parse_url, is_short_link, app_url_for, web_url_for
-from music.resolvers.errors import (
+from resolvers import parse_url, is_short_link, app_url_for, web_url_for
+from resolvers.errors import (
     MalformedURL,
     NeedsExpansion,
     UnsupportedEntity,
     UnsupportedURL,
 )
-from music.resolvers.types import EntityKind, Service
+from resolvers.types import EntityKind, Service
 
 # Real-world identifiers, correct shapes: Spotify 22-char base62,
 # Apple numeric, YouTube 11-char.

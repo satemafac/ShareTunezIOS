@@ -9,7 +9,7 @@ matching risk.
 
 import unittest
 
-from music.resolvers.normalize import (
+from resolvers.normalize import (
     extract_featured,
     extract_version_tags,
     normalize_artist,

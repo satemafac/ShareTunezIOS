@@ -9,7 +9,7 @@ silently.
 
 import unittest
 
-from music.resolvers.matcher import (
+from resolvers.matcher import (
     AMBIGUITY_GAP,
     AUTO_THRESHOLD,
     LOW_THRESHOLD,
@@ -19,7 +19,7 @@ from music.resolvers.matcher import (
     rank_candidates,
     score_candidate,
 )
-from music.resolvers.types import MatchMethod, SongIdentity
+from resolvers.types import MatchMethod, SongIdentity
 
 
 def song(title, artist, ms=200_000, isrc=None, explicit=None):
